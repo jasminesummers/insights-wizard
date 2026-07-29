@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Insights Wizard — Qualitative Synthesis & Quote Hub</title>
+  <style>
+    :root {
+      --g-blue-600: #1a73e8;
+      --g-blue-700: #1557b0;
+      --g-blue-50: #e8f0fe;
+      --g-blue-100: #d2e3fc;
+      --g-gray-50: #f8f9fa;
+      --g-gray-100: #f1f3f4;
+      --g-gray-200: #e8eaed;
+      --g-gray-300: #dadce0;
+      --g-gray-600: #5f6368;
+      --g-gray-800: #3c4043;
+      --g-gray-900: #202124;
+      --radius: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: var(--g-gray-50);
+      color: var(--g-gray-900);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--g-gray-200);
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 4px;
+      background-color: var(--g-blue-600);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 13px;
+    }
+    .brand-title { font-size: 16px; font-weight: 600; color: var(--g-gray-900); }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 220px 320px 1fr;
+      flex: 1;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+    .projects-sidebar {
+      background: #ffffff; border-right: 1px solid var(--g-gray-200);
+      display: flex; flex-direction: column; padding: 12px 8px;
+    }
+    .sidebar-section-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+      text-transform: uppercase; color: var(--g-gray-600); padding: 6px 10px;
+    }
+    .project-list { list-style: none; flex: 1; overflow-y: auto; }
+    .project-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: var(--radius); font-size: 13px;
+      font-weight: 500; color: var(--g-gray-800); cursor: pointer; margin-bottom: 2px;
+    }
+    .project-item:hover { background-color: var(--g-gray-100); }
+    .project-item.active { background-color: var(--g-blue-50); color: var(--g-blue-700); font-weight: 600; }
+    .project-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: var(--g-gray-200); color: var(--g-gray-800); }
+    
+    .btn-create-project {
+      padding: 7px 10px; border: 1px solid var(--g-gray-300); color: var(--g-blue-600);
+      border-radius: var(--radius); background: white; font-size: 12px;
+      font-weight: 500; cursor: pointer; margin-top: 8px; text-align: center;
+    }
+
+    .transcripts-panel {
+      background: #ffffff; border-right: 1px solid var(--g-gray-200);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-header { padding: 12px 14px; border-bottom: 1px solid var(--g-gray-200); }
+    .panel-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--g-gray-900); }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 12px;
+      border: 1px solid var(--g-gray-300); background: white; color: var(--g-gray-800); cursor: pointer;
+    }
+    .chip.active { background: var(--g-blue-600); color: white; border-color: var(--g-blue-600); }
+
+    .selection-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 14px; background: var(--g-gray-100); border-bottom: 1px solid var(--g-gray-200);
+      font-size: 11px; color: var(--g-gray-600);
+    }
+    .transcript-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .transcript-card {
+      border: 1px solid var(--g-gray-200); border-radius: var(--radius);
+      padding: 10px; margin-bottom: 6px; background: white; cursor: pointer;
+    }
+    .transcript-card.selected { border-color: var(--g-blue-600); background-color: #f8fbff; }
+
+    .btn-upload-trigger {
+      margin: 10px; padding: 10px; background: var(--g-blue-600); color: white;
+      border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer;
+      text-align: center;
+    }
+    .btn-upload-trigger:hover { background: var(--g-blue-700); }
+
+    .output-workspace { display: flex; flex-direction: column; background: var(--g-gray-50); overflow: hidden; }
+    .output-tabs {
+      background: white; border-bottom: 1px solid var(--g-gray-200);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+    }
+    .output-tab {
+      padding: 13px 16px; font-size: 12px; font-weight: 600; color: var(--g-gray-600);
+      border-bottom: 2px solid transparent; cursor: pointer; background: transparent; border:none;
+    }
+    .output-tab.active { color: var(--g-blue-600); border-bottom: 2px solid var(--g-blue-600); }
+    .output-content-area { flex: 1; overflow-y: auto; padding: 18px; }
+    .slides-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 12px; }
+    .slide-punch-card {
+      background: white; border: 1px solid var(--g-gray-200); border-top: 3px solid var(--g-blue-600);
+      border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .category-label { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--g-blue-600); }
+    .punch-quote { font-size: 12px; line-height: 1.5; color: var(--g-gray-900); margin: 6px 0 10px 0; }
+    .punch-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--g-gray-100); padding-top: 8px; }
+    .btn-copy-card { font-size: 10px; font-weight: 500; padding: 3px 8px; border: 1px solid var(--g-gray-300); border-radius: 3px; background: white; cursor: pointer; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-overlay.open { display: flex; }
+    .modal-card { background: white; border-radius: var(--radius); width: 540px; padding: 22px; border: 1px solid var(--g-gray-300); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">IW</div>
+      <div class="brand-title">Insights Wizard</div>
+    </div>
+    <button onclick="resetToSeedData()" style="font-size:11px;color:#d93025;background:none;border:1px solid #fad2cf;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;">
+      Reset Clean Seed Data
+    </button>
+  </header>
+
+  <div class="app-shell">
+    <aside class="projects-sidebar">
+      <div class="sidebar-section-title">Research Folders</div>
+      <ul class="project-list" id="projectList"></ul>
+      <button class="btn-create-project" onclick="promptNewProject()">New Project Folder</button>
+      <button class="btn-create-project" onclick="openShareModal()" style="margin-top:4px;border-color:var(--g-blue-100);color:var(--g-blue-700);background:var(--g-blue-50);">🔗 Share Folder</button>
+    </aside>
+
+    <section class="transcripts-panel">
+      <div class="panel-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="panel-title" id="activeProjectTitle">Title</div>
+          <button onclick="resetAllFilters()" style="font-size:10px;color:var(--g-blue-600);background:none;border:none;cursor:pointer;font-weight:600;">Reset Filters</button>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:var(--g-gray-600);text-transform:uppercase;margin-bottom:3px;">Filter by Stakeholder Role:</div>
+        <div class="filter-bar" id="roleFilterBar" style="margin-bottom:8px;"></div>
+        <div style="font-size:10px;font-weight:700;color:var(--g-gray-600);text-transform:uppercase;margin-bottom:3px;">Filter by Content Theme:</div>
+        <div class="filter-bar" id="themeFilterBar"></div>
+      </div>
+
+      <div class="selection-bar">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)">
+          <span>Select all transcripts</span>
+        </label>
+        <span id="selectedCountText">0 selected</span>
+      </div>
+
+      <div class="transcript-list" id="transcriptList"></div>
+      
+      <button class="btn-upload-trigger" onclick="openUploadModal()">
+        Upload Document
+      </button>
+    </section>
+
+    <main class="output-workspace">
+      <div class="output-tabs">
+        <div>
+          <button class="output-tab active" onclick="switchOutputTab('slides', this)">Punch Quotes</button>
+          <button class="output-tab" onclick="switchOutputTab('doc', this)">Briefing Doc</button>
+          <button class="output-tab" onclick="switchOutputTab('chat', this)">Team Update</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--g-gray-600);">
+          <span style="font-weight:600;">Organise View By:</span>
+          <button onclick="setGroupBy('none')" id="grpNoneBtn" style="padding:2px 7px;border-radius:4px;border:1px solid var(--g-gray-300);background:var(--g-blue-600);color:white;font-size:10px;font-weight:600;cursor:pointer;">Flat</button>
+          <button onclick="setGroupBy('theme')" id="grpThemeBtn" style="padding:2px 7px;border-radius:4px;border:1px solid var(--g-gray-300);background:white;color:var(--g-gray-800);font-size:10px;font-weight:600;cursor:pointer;">Theme</button>
+          <button onclick="setGroupBy('role')" id="grpRoleBtn" style="padding:2px 7px;border-radius:4px;border:1px solid var(--g-gray-300);background:white;color:var(--g-gray-800);font-size:10px;font-weight:600;cursor:pointer;">Role</button>
+        </div>
+      </div>
+
+      <div class="output-content-area" id="outputContentArea"></div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal-card" style="max-width:540px;">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px;color:var(--g-gray-900);">📄 Upload Document</div>
+      <div style="font-size:11px;color:var(--g-gray-600);margin-bottom:14px;">Select a local transcript file (.txt, .md, .csv) to auto-extract quotes and attach an optional Google Drive source link.</div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:4px;">1. Select Transcript File</label>
+          <div class="drop-zone" id="dropZone" 
+               onclick="document.getElementById('fileInputModal').click();"
+               ondragover="event.preventDefault();"
+               ondrop="event.preventDefault();handleModalFileChosen(event.dataTransfer.files);"
+               style="padding:22px 14px;border:2px dashed var(--g-blue-600);background:#f8fbff;border-radius:6px;text-align:center;cursor:pointer;">
+            <div style="font-size:13px;font-weight:600;color:var(--g-blue-700);" id="dropZoneText">📁 Click to choose file or drag &amp; drop</div>
+            <div style="font-size:10px;color:var(--g-gray-600);margin-top:2px;">Supports plain text (.txt), Markdown (.md), and CSV (.csv)</div>
+          </div>
+          <input type="file" id="fileInputModal" class="file-input-hidden" accept=".txt,.md,.csv,.json" onchange="handleModalFileChosen(this.files)" style="display:none;">
+        </div>
+
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:3px;">2. Speaker / Document Title <span style="font-weight:400;color:var(--g-blue-600);">(Auto-populated from file)</span></label>
+          <input type="text" id="modalTitleInput" placeholder="Auto-populated when file is chosen..." 
+                 style="width:100%;padding:8px 10px;border:1px solid var(--g-gray-300);border-radius:4px;font-size:12px;" />
+        </div>
+
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:3px;">3. Google Drive URL <span style="font-weight:400;color:var(--g-gray-600);">(Optional source link)</span></label>
+          <input type="text" id="modalUrlInput" placeholder="https://docs.google.com/document/d/..." 
+                 onkeydown="if(event.key==='Enter') processUploadedDocument()"
+                 style="width:100%;padding:8px 10px;border:1px solid var(--g-gray-300);border-radius:4px;font-size:12px;" />
+        </div>
+
+        <button id="submitUploadBtn" onclick="processUploadedDocument()" 
+                style="padding:10px 16px;background:var(--g-blue-600);color:white;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;">
+          Upload &amp; Extract Quotes
+        </button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+        <button onclick="closeUploadModal()" style="padding:6px 14px;border:1px solid var(--g-gray-300);background:white;border-radius:4px;font-size:12px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="shareModal">
+    <div class="modal-card" style="max-width:500px;">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px;color:var(--g-gray-900);">🔗 Share Research Folder</div>
+      <div style="font-size:11px;color:var(--g-gray-600);margin-bottom:14px;" id="shareModalSubtext">Copy this web link to share your research transcripts, verbatim quotes, and Google Drive source links with teammates.</div>
+
+      <div style="background:#f8fbff;border:1px solid #d2e3fc;border-radius:6px;padding:14px;">
+        <label style="font-size:11px;font-weight:700;color:var(--g-blue-700);display:block;margin-bottom:6px;">Teammate Web Link</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="shareUrlInput" readonly style="flex:1;padding:8px 10px;border:1px solid var(--g-gray-300);border-radius:4px;font-size:11px;background:white;color:var(--g-gray-800);" />
+          <button id="copyShareUrlBtn" onclick="copyShareUrlToClipboard()" style="padding:8px 14px;background:var(--g-blue-600);color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Copy Link</button>
+        </div>
+        <div style="font-size:10px;color:var(--g-gray-600);margin-top:6px;">When teammates open this link, the research folder and quotes will automatically import into their workspace.</div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button onclick="closeShareModal()" style="padding:6px 14px;border:1px solid var(--g-gray-300);background:white;border-radius:4px;font-size:12px;cursor:pointer;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SEED_PROJECTS = [
+      {
+        id: "p_default",
+        name: "Title",
+        transcripts: []
+      }
+    ];
+
+    let state = {
+      projects: SEED_PROJECTS,
+      activeProjectId: "p_default",
+      roleFilter: "all",
+      themeFilter: "all",
+      favoritesOnly: false,
+      groupBy: "none",
+      activeOutputTab: "slides"
+    };
+
+    function init() {
+      const saved = localStorage.getItem("g_wizard_v10");
+      if (saved) {
+        try {
+          state.projects = JSON.parse(saved);
+        } catch(e) {
+          state.projects = SEED_PROJECTS;
+        }
+      } else {
+        state.projects = SEED_PROJECTS;
+      }
+      if (!state.projects || state.projects.length === 0) {
+        state.projects = SEED_PROJECTS;
+      }
+      if (!state.activeProjectId || !state.projects.find(p => p.id === state.activeProjectId)) {
+        state.activeProjectId = state.projects[0].id;
+      }
+      checkUrlSharePayload();
+      save();
+      render();
+    }
+
+    function removeAllTranscripts() {
+      const proj = getProj();
+      if (!proj) return;
+      if (confirm(`Remove all research docs from "${proj.name}"?`)) {
+        proj.transcripts = [];
+        state.roleFilter = "all";
+        state.themeFilter = "all";
+        state.favoritesOnly = false;
+        save();
+        render();
+        showNotificationToast("🗑️ All research docs removed!");
+      }
+    }
+
+    function resetToSeedData() {
+      if (confirm("Reset all research folders to clean default seed data?")) {
+        state.projects = SEED_PROJECTS;
+        state.roleFilter = "all";
+        state.themeFilter = "all";
+        state.favoritesOnly = false;
+        save();
+        render();
+        showNotificationToast("✅ Reset to clean seed data!");
+      }
+    }
+
+    function resetAllFilters() {
+      state.roleFilter = "all";
+      state.themeFilter = "all";
+      state.favoritesOnly = false;
+      render();
+    }
+
+    function toggleFavoriteQuote(refObj, e) {
+      if (e) e.stopPropagation();
+      if (refObj) {
+        refObj.isFavorite = !refObj.isFavorite;
+        save();
+        render();
+      }
+    }
+
+    function deleteTranscript(tid) {
+      const proj = getProj();
+      if (!proj) return;
+      const target = proj.transcripts.find(t => t.id === tid);
+      const name = target ? target.participant : "transcript";
+      if (confirm(`Are you sure you want to delete "${name}" and all its extracted quotes?`)) {
+        proj.transcripts = proj.transcripts.filter(t => t.id !== tid);
+        save();
+        render();
+        showNotificationToast(`🗑️ Deleted "${name}"!`);
+      }
+    }
+
+    function save() { localStorage.setItem("g_wizard_v10", JSON.stringify(state.projects)); }
+    function getProj() { return state.projects.find(p => p.id === state.activeProjectId) || state.projects[0]; }
+
+    function getUniqueRolesInActiveProject() {
+      const proj = getProj();
+      if (!proj) return [];
+      const set = new Set();
+      proj.transcripts.forEach(t => { if (t.role && t.role.trim()) set.add(t.role.trim()); });
+      return Array.from(set);
+    }
+
+    function cleanCategoryName(raw) {
+      return raw.replace(/^\d+[\.\)\s–-]+/, '').trim();
+    }
+
+    function sanitizeUrl(rawUrl) {
+      if (!rawUrl || typeof rawUrl !== 'string') return "";
+      let u = rawUrl.trim();
+      if (!u) return "";
+      if (!/^https?:\/\//i.test(u)) {
+        u = "https://" + u;
+      }
+      return u;
+    }
+
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return "";
+      const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${day}-${monthNames[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+    }
+
+    function getUniqueThemesInActiveProject() {
+      const proj = getProj();
+      if (!proj) return [];
+      const set = new Set();
+      proj.transcripts.forEach(t => {
+        t.quotes.forEach(q => {
+          if (q.category && q.category.trim()) set.add(cleanCategoryName(q.category.trim()));
+        });
+      });
+      return Array.from(set);
+    }
+
+    function setGroupBy(mode) {
+      state.groupBy = mode;
+      ['grpNoneBtn', 'grpThemeBtn', 'grpRoleBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.style.background = "white";
+        btn.style.color = "var(--g-gray-800)";
+      });
+      const activeBtn = document.getElementById(mode === 'theme' ? 'grpThemeBtn' : (mode === 'role' ? 'grpRoleBtn' : 'grpNoneBtn'));
+      if (activeBtn) {
+        activeBtn.style.background = "var(--g-blue-600)";
+        activeBtn.style.color = "white";
+      }
+      renderOutput();
+    }
+
+    function parseOneBoxText(rawText, filename) {
+      const textLower = rawText.toLowerCase();
+      let participant = filename ? filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ") : "";
+      let org = "External Partner";
+      let role = "GLG Expert";
+      let title = filename ? filename.replace(/\.[^/.]+$/, "") : "Interview Notes";
+
+      if (textLower.includes("michael hardy")) {
+        participant = "Michael Hardy";
+        org = "VP, Alliances & OEM — Quantum Corporation";
+        role = "GLG Expert";
+      } else if (textLower.includes("dinesh kumar")) {
+        participant = "Dinesh Kumar";
+        org = "Former Hyperscale Procurement Lead, Meta & AWS";
+        role = "GLG Expert";
+      } else if (textLower.includes("holomem")) {
+        participant = "Holomem";
+        org = "Holomem Technology Inc.";
+        role = "Competitor";
+      } else if (textLower.includes("rebecca chiu")) {
+        participant = "Rebecca Chiu";
+        org = "Google X Archival Pod";
+        role = "Google Employee";
+      } else {
+        const nameMatch = rawText.match(/(?:Speaker|Participant|Name|Expert):\s*([^\n,]+)(?:,\s*([^\n]+))?/i) ||
+                          rawText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)\s*[-—–]\s*([^\n]+)/);
+        if (nameMatch) {
+          participant = nameMatch[1].trim();
+          if (nameMatch[2]) org = nameMatch[2].trim();
+        }
+        if (!participant || participant === "Google Drive Document" || participant === "Uploaded Research Doc") {
+          participant = (filename && filename !== "Google Drive Document") ? filename : "Industry Expert";
+        }
+
+        if (textLower.includes("glg") || textLower.includes("gerson") || textLower.includes("lehrman")) {
+          role = "GLG Expert";
+        } else if (textLower.includes("holomem") || textLower.includes("folio") || textLower.includes("cerabyte")) {
+          role = "Competitor";
+        } else if (textLower.includes("google") || textLower.includes("deepmind")) {
+          role = "Google Employee";
+        } else if (textLower.includes("seagate") || textLower.includes("western") || textLower.includes("oem")) {
+          role = "OEM Leadership";
+        } else if (textLower.includes("meta") || textLower.includes("aws") || textLower.includes("consultant")) {
+          role = "Hyperscale Infra";
+        }
+      }
+
+      const chunks = rawText
+        .split(/\n\n+|\r\n\r\n+|\n[-•*]\s*|\n(?=\d+[\.\)])|(?<=[.?!])\s+(?=[A-Z0-9"“])|\n/)
+        .map(c => c.trim().replace(/^[•*\-\d\.\)\s]+/, '').replace(/^["'“]+|["'”]+$/g, '').trim())
+        .filter(c => c.length > 6 && !c.toLowerCase().startsWith("speaker:") && !c.toLowerCase().startsWith("role:"));
+
+      const rules = [
+        ["Capacity & Supply Pressures", ["shortage", "supply", "capacity", "cost", "price", "delay", "commit", "order", "flash", "lead time", "oem"]],
+        ["Workloads & Data Tiering", ["tier", "cold", "hot", "warm", "archive", "rot", "delete", "retention", "footprint", "exabyte", "petabyte"]],
+        ["Emerging Tech & Value Prop", ["glass", "silica", "ceramic", "optical", "material", "nanometer", "magnetic", "year", "substrate", "laser"]],
+        ["Performance & Buying Criteria", ["tco", "buying", "criteria", "power", "density", "latency", "write", "read", "kpc", "media"]],
+        ["Adoption & Commercial Strategy", ["poc", "pilot", "lab", "test", "qualification", "esg", "audit", "contract", "roadmap", "sample"]]
+      ];
+
+      const defaultCats = [
+        "Capacity & Supply Pressures",
+        "Workloads & Data Tiering",
+        "Emerging Tech & Value Prop",
+        "Performance & Buying Criteria",
+        "Adoption & Commercial Strategy"
+      ];
+
+      const quotes = [];
+      chunks.forEach((chunkText, idx) => {
+        const lower = chunkText.toLowerCase();
+        let assignedCat = null;
+
+        for (const [catName, kwList] of rules) {
+          if (kwList.some(k => lower.includes(k))) {
+            assignedCat = catName;
+            break;
+          }
+        }
+
+        if (!assignedCat) {
+          assignedCat = defaultCats[idx % defaultCats.length];
+        }
+
+        quotes.push({
+          category: assignedCat,
+          quote: chunkText,
+          takeaway: chunkText.length > 80 ? chunkText.slice(0, 77) + "..." : chunkText
+        });
+      });
+
+      if (quotes.length === 0) {
+        quotes.push({
+          category: "Performance & Buying Criteria",
+          quote: rawText.trim() || `Sourced research from ${participant}`,
+          takeaway: `Verbatim document notes from ${participant}`
+        });
+      }
+
+      return { participant, org, role, title, quotes };
+    }
+
+    function showNotificationToast(msg) {
+      let toast = document.getElementById("appToast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "appToast";
+        toast.style.cssText = "position:fixed;top:16px;right:16px;background:#1a73e8;color:white;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;";
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = "1";
+      setTimeout(() => { toast.style.opacity = "0"; }, 3500);
+    }
+
+    let pendingFileContent = "";
+
+    function handleModalFileChosen(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      
+      const titleInput = document.getElementById("modalTitleInput");
+      const cleanedName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+      if (titleInput) {
+        titleInput.value = cleanedName;
+      }
+
+      const dzText = document.getElementById("dropZoneText");
+      if (dzText) {
+        dzText.textContent = `📄 Selected: ${file.name}`;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        pendingFileContent = e.target.result || "";
+      };
+      reader.readAsText(file);
+    }
+
+    function processUploadedDocument() {
+      const titleInput = document.getElementById("modalTitleInput");
+      const urlInput = document.getElementById("modalUrlInput");
+
+      const docTitle = titleInput ? titleInput.value.trim() : "";
+      const rawUrl = urlInput ? urlInput.value.trim() : "";
+
+      if (!pendingFileContent && !docTitle) {
+        alert("Please select a transcript file to upload.");
+        return;
+      }
+
+      try {
+        const cleanUrl = rawUrl ? sanitizeUrl(rawUrl) : "";
+        const contentToParse = pendingFileContent || docTitle;
+        const extracted = parseOneBoxText(contentToParse, docTitle || "Uploaded Transcript");
+
+        let proj = getProj();
+        if (!proj || !Array.isArray(proj.transcripts)) {
+          proj = { id: "p_" + Date.now(), name: "Title", transcripts: [] };
+          state.projects = [proj];
+          state.activeProjectId = proj.id;
+        }
+
+        const newTranscript = {
+          id: "t_" + Date.now(),
+          participant: extracted.participant,
+          organization: extracted.org,
+          role: extracted.role,
+          title: docTitle || extracted.title,
+          sourceUrl: cleanUrl,
+          date: new Date().toISOString().split("T")[0],
+          checked: true,
+          quotes: extracted.quotes.map(q => ({ ...q, source_url: cleanUrl }))
+        };
+
+        proj.transcripts.unshift(newTranscript);
+
+        state.roleFilter = "all";
+        state.themeFilter = "all";
+        state.favoritesOnly = false;
+
+        save();
+        closeUploadModal();
+        render();
+
+        pendingFileContent = "";
+        if (titleInput) titleInput.value = "";
+        if (urlInput) urlInput.value = "";
+        const dzText = document.getElementById("dropZoneText");
+        if (dzText) dzText.textContent = "📁 Click to choose file or drag & drop";
+
+        showNotificationToast(`✅ Uploaded "${newTranscript.participant}" & extracted ${extracted.quotes.length} quotes!`);
+
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("Notice: " + err.message);
+      }
+    }
+
+    function render() {
+      const pList = document.getElementById("projectList");
+      pList.innerHTML = "";
+      state.projects.forEach(p => {
+        const li = document.createElement("li");
+        li.className = `project-item ${p.id === state.activeProjectId ? 'active' : ''}`;
+        li.onclick = () => { state.activeProjectId = p.id; state.roleFilter = "all"; save(); render(); };
+        li.innerHTML = `
+          <div style="display:flex;align-items:center;gap:4px;overflow:hidden;text-overflow:ellipsis;">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</span>
+            <button onclick="event.stopPropagation();promptRenameProject('${p.id}')" 
+                    style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-gray-600);" 
+                    title="Rename Research Folder">✏️</button>
+            <button onclick="event.stopPropagation();openShareModalFor('${p.id}')" 
+                    style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-blue-600);" 
+                    title="Share Research Folder">🔗</button>
+          </div>
+          <span class="project-badge">${p.transcripts.length}</span>
+        `;
+        pList.appendChild(li);
+      });
+
+      const proj = getProj();
+      document.getElementById("activeProjectTitle").textContent = proj ? proj.name : "";
+
+      const roleBar = document.getElementById("roleFilterBar");
+      roleBar.innerHTML = "";
+      const roles = getUniqueRolesInActiveProject();
+
+      const allRoleChip = document.createElement("div");
+      allRoleChip.className = `chip ${state.roleFilter === "all" ? 'active' : ''}`;
+      allRoleChip.textContent = `All Roles (${proj.transcripts.length})`;
+      allRoleChip.onclick = () => { state.roleFilter = "all"; render(); };
+      roleBar.appendChild(allRoleChip);
+
+      roles.forEach(r => {
+        const count = proj.transcripts.filter(t => t.role === r).length;
+        const chip = document.createElement("div");
+        chip.className = `chip ${state.roleFilter === r ? 'active' : ''}`;
+        chip.textContent = `${r} (${count})`;
+        chip.onclick = () => { state.roleFilter = r; render(); };
+        roleBar.appendChild(chip);
+      });
+
+      const themeBar = document.getElementById("themeFilterBar");
+      themeBar.innerHTML = "";
+      const themes = getUniqueThemesInActiveProject();
+
+      let totalQuotesCount = 0;
+      let totalFavCount = 0;
+      proj.transcripts.forEach(t => {
+        t.quotes.forEach(q => {
+          totalQuotesCount++;
+          if (q.isFavorite) totalFavCount++;
+        });
+      });
+
+      const allThemeChip = document.createElement("div");
+      allThemeChip.className = `chip ${state.themeFilter === "all" && !state.favoritesOnly ? 'active' : ''}`;
+      allThemeChip.textContent = `All Themes (${totalQuotesCount})`;
+      allThemeChip.onclick = () => { state.themeFilter = "all"; state.favoritesOnly = false; render(); };
+      themeBar.appendChild(allThemeChip);
+
+      const favChip = document.createElement("div");
+      favChip.className = `chip ${state.favoritesOnly ? 'active' : ''}`;
+      favChip.style.border = state.favoritesOnly ? '1px solid #f4b400' : '1px solid var(--g-gray-300)';
+      favChip.style.background = state.favoritesOnly ? '#fef7e0' : 'white';
+      favChip.style.color = state.favoritesOnly ? '#b06000' : 'var(--g-gray-800)';
+      favChip.textContent = `⭐ Favorites (${totalFavCount})`;
+      favChip.onclick = () => { state.favoritesOnly = !state.favoritesOnly; render(); };
+      themeBar.appendChild(favChip);
+
+      themes.forEach(th => {
+        let count = 0;
+        proj.transcripts.forEach(t => {
+          t.quotes.forEach(q => { if (cleanCategoryName(q.category) === th) count++; });
+        });
+        const chip = document.createElement("div");
+        chip.className = `chip ${state.themeFilter === th && !state.favoritesOnly ? 'active' : ''}`;
+        chip.textContent = `${th} (${count})`;
+        chip.onclick = () => { state.themeFilter = th; state.favoritesOnly = false; render(); };
+        themeBar.appendChild(chip);
+      });
+
+      const tList = document.getElementById("transcriptList");
+      tList.innerHTML = "";
+      const list = proj ? (state.roleFilter === "all" ? proj.transcripts : proj.transcripts.filter(t => t.role === state.roleFilter)) : [];
+      const checkedCount = proj ? proj.transcripts.filter(t => t.checked).length : 0;
+      document.getElementById("selectedCountText").textContent = `${checkedCount} of ${proj.transcripts.length} checked`;
+      document.getElementById("selectAllCheckbox").checked = (proj.transcripts.length > 0 && checkedCount === proj.transcripts.length);
+
+      list.forEach(t => {
+        const card = document.createElement("div");
+        card.className = `transcript-card ${t.checked ? 'selected' : ''}`;
+        card.onclick = (e) => {
+          if (e.target.tagName !== "INPUT" && e.target.tagName !== "BUTTON" && e.target.tagName !== "A") {
+            t.checked = !t.checked; save(); render();
+          }
+        };
+        card.innerHTML = `
+          <div class="transcript-top">
+            <input type="checkbox" ${t.checked ? 'checked' : ''} onchange="t.checked=this.checked;save();render();">
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-weight:700;font-size:13px;color:var(--g-gray-900);line-height:1.2;">${t.participant}</div>
+              <div style="font-size:11px;color:var(--g-gray-600);margin-top:2px;">${t.organization ? t.organization + ' • ' : ''}${t.role}</div>
+              <div style="font-size:10px;color:var(--g-gray-600);margin-top:3px;font-weight:500;">📅 ${formatDisplayDate(t.date)}</div>
+            </div>
+            <button onclick="event.stopPropagation();deleteTranscript('${t.id}')" 
+                    style="background:#fce8e6;border:1px solid #fad2cf;color:#c5221f;border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;cursor:pointer;margin-left:6px;" 
+                    title="Delete this transcript">
+              Delete
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:10px;color:#5f6368;border-top:1px solid #f1f3f4;padding-top:4px;">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;">
+              ${t.sourceUrl ? `<a href="${sanitizeUrl(t.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Click to open Google Drive doc:\n${t.sourceUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Drive Source (${t.quotes.length} q)</a>` : `<span style="color:var(--g-gray-600);">📄 ${t.title} (${t.quotes.length} q)</span>`}
+              <button onclick="event.stopPropagation();promptEditSourceUrl('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-blue-600);margin-left:2px;" title="Edit Drive URL">(Edit URL)</button>
+            </span>
+            <span class="role-badge" style="margin-top:0;">
+              ${t.role}
+              <button onclick="event.stopPropagation();promptSelfCategorize('${t.id}')">(Edit Role)</button>
+            </span>
+          </div>
+        `;
+        tList.appendChild(card);
+      });
+
+      renderOutput();
+    }
+
+    function promptEditSourceUrl(tid) {
+      const proj = getProj();
+      const tr = proj.transcripts.find(x => x.id === tid);
+      if (!tr) return;
+      const input = prompt(`Paste or update Google Drive URL for "${tr.participant}":`, tr.sourceUrl || "");
+      if (input !== null) {
+        const cleanUrl = sanitizeUrl(input);
+        tr.sourceUrl = cleanUrl;
+        if (tr.quotes) {
+          tr.quotes.forEach(q => q.source_url = cleanUrl);
+        }
+        save(); render();
+      }
+    }
+
+    function promptSelfCategorize(tid) {
+      const proj = getProj();
+      const tr = proj.transcripts.find(x => x.id === tid);
+      if (!tr) return;
+      const newCategory = prompt(`Overwrite stakeholder category tag for ${tr.participant}:`, tr.role);
+      if (newCategory !== null && newCategory.trim()) {
+        tr.role = newCategory.trim();
+        save(); render();
+      }
+    }
+
+    function autoDiscoverContentThemes(quotes) {
+      const clusterDefs = [
+        { title: "Supply Chain Collapses & Multi-Year Order Lock-ins", keywords: ["shortage", "supply", "commit", "2027", "2028", "order", "allocation", "flash"] },
+        { title: "Archival Workload Ratios & ROT Data Footprints", keywords: ["rot", "ratio", "cold", "frozen", "tier", "exabyte", "delete", "90-day"] },
+        { title: "Novel Substrates & Physics Ceilings (Glass, Ceramic, Silica)", keywords: ["glass", "silica", "ceramic", "nanometer", "magnetic", "substrate", "laser"] },
+        { title: "True Loaded TCO Multipliers vs Raw Media Cost", keywords: ["tco", "slot", "library", "loaded", "balloon", "cartridge", "amortiz"] },
+        { title: "Hyperscale KPC Priorities (Capacity Density & Idle mW Power)", keywords: ["kpc", "buying", "density", "power", "milliwatt", "sleep", "lifespan", "rank"] },
+        { title: "Qualification Funnel & Lab POC Timelines (4–5 Months)", keywords: ["qualification", "poc", "month", "alct", "sample", "pilot", "wrapper", "audit"] }
+      ];
+
+      const activeThemes = [];
+      clusterDefs.forEach(cl => {
+        const matching = quotes.filter(q => {
+          const blob = (q.quote + " " + q.takeaway + " " + q.category).toLowerCase();
+          return cl.keywords.some(k => blob.includes(k));
+        });
+        if (matching.length > 0) {
+          activeThemes.push({ ...cl, quotes: matching });
+        }
+      });
+      return activeThemes;
+    }
+
+    function renderOutput() {
+      const proj = getProj();
+      let rawQuotes = [];
+      proj.transcripts.filter(t => t.checked).forEach(t => {
+        if (state.roleFilter !== "all" && t.role !== state.roleFilter) return;
+        t.quotes.forEach(q => {
+          const cleanCat = cleanCategoryName(q.category);
+          if (state.themeFilter !== "all" && cleanCat !== state.themeFilter) return;
+          if (state.favoritesOnly && !q.isFavorite) return;
+          rawQuotes.push({ 
+            ...q, 
+            refQuoteObj: q,
+            speaker: t.participant, 
+            org: t.organization, 
+            roleTag: t.role,
+            sourceFile: q.source_file || t.title,
+            sourceUrl: q.source_url || t.sourceUrl || ""
+          });
+        });
+      });
+
+      const selQuotes = rawQuotes;
+      state.currentFilteredQuotes = selQuotes;
+      const area = document.getElementById("outputContentArea");
+
+      if (selQuotes.length === 0) {
+        area.innerHTML = `<div style="padding:40px;text-align:center;color:#5f6368;">${state.favoritesOnly ? 'No quotes starred as favorites yet. Click the ⭐ star icon on any card to favorite it!' : 'No quotes match the current Role &amp; Theme filter criteria. Check transcripts or click "Reset Filters".'}</div>`;
+        return;
+      }
+
+      function buildCardHtml(q, qIdx) {
+        const cleanCat = cleanCategoryName(q.category);
+        const srcLabel = q.sourceFile || q.speaker;
+        const srcUrl = q.sourceUrl;
+        const isFav = !!q.refQuoteObj.isFavorite;
+        return `
+          <div class="slide-punch-card" style="${isFav ? 'border-top-color:#f4b400;background:#fffdf5;' : ''}">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div class="category-label">${cleanCat} • <span style="color:var(--g-gray-600);font-weight:500;">${q.roleTag}</span></div>
+                <button onclick="toggleFavoriteQuote(state.currentFilteredQuotes[${qIdx}].refQuoteObj, event)" 
+                        style="background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;" 
+                        title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}">
+                  ${isFav ? '⭐' : '☆'}
+                </button>
+              </div>
+              <div class="punch-quote">“${q.quote}”</div>
+            </div>
+            <div class="punch-footer">
+              <div style="font-size:10px;color:#5f6368;">
+                <strong>${q.speaker}</strong><br/>${q.org}
+                <div style="margin-top:3px;font-size:10px;">
+                  ${srcUrl ? `<a href="${sanitizeUrl(srcUrl)}" target="_blank" rel="noopener" title="Hover / Click to open Google Drive doc:\n${srcUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Drive Source</a>` : `<span title="Source transcript: ${srcLabel}" style="color:var(--g-gray-600);">📄 ${srcLabel}</span>`}
+                </div>
+              </div>
+              <button class="btn-copy-card" onclick="copySingleCardHtml(${qIdx}, this)" style="font-family:'Google Sans',sans-serif;">Copy Card</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (state.activeOutputTab === "slides") {
+        let html = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <span style="font-size:11px;font-weight:600;color:var(--g-gray-600);">${selQuotes.length} Punch Quote Cards</span>
+            <button id="copyAllCardsBtn" onclick="copyAllCardsForSlides()" 
+                    style="padding:6px 14px;background:#1a73e8;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Google Sans',sans-serif;">
+              Copy All Cards for Google Slides / Docs
+            </button>
+          </div>
+        `;
+
+        if (state.groupBy === "theme") {
+          const groupMap = {};
+          selQuotes.forEach(q => {
+            const cat = cleanCategoryName(q.category);
+            if (!groupMap[cat]) groupMap[cat] = [];
+            groupMap[cat].push(q);
+          });
+          let globalIdx = 0;
+          Object.keys(groupMap).forEach(catName => {
+            html += `<div style="font-size:13px;font-weight:700;color:var(--g-blue-700);margin:14px 0 8px 0;padding-bottom:4px;border-bottom:2px solid var(--g-blue-100);">📂 Theme: ${catName} (${groupMap[catName].length})</div>`;
+            html += `<div class="slides-cards-grid">`;
+            groupMap[catName].forEach(q => { html += buildCardHtml(q, globalIdx++); });
+            html += `</div>`;
+          });
+        } else if (state.groupBy === "role") {
+          const groupMap = {};
+          selQuotes.forEach(q => {
+            const roleKey = q.roleTag || "Unspecified";
+            if (!groupMap[roleKey]) groupMap[roleKey] = [];
+            groupMap[roleKey].push(q);
+          });
+          let globalIdx = 0;
+          Object.keys(groupMap).forEach(roleName => {
+            html += `<div style="font-size:13px;font-weight:700;color:var(--g-gray-800);margin:14px 0 8px 0;padding-bottom:4px;border-bottom:2px solid var(--g-gray-300);">👤 Stakeholder Role: ${roleName} (${groupMap[roleName].length})</div>`;
+            html += `<div class="slides-cards-grid">`;
+            groupMap[roleName].forEach(q => { html += buildCardHtml(q, globalIdx++); });
+            html += `</div>`;
+          });
+        } else {
+          html += `<div class="slides-cards-grid">`;
+          selQuotes.forEach((q, idx) => { html += buildCardHtml(q, idx); });
+          html += `</div>`;
+        }
+        area.innerHTML = html;
+      } else if (state.activeOutputTab === "doc") {
+        let html = `
+          <div style="background:white;padding:24px;border-radius:6px;border:1px solid #dadce0;max-width:820px;margin:0 auto;font-family:'Google Sans',Roboto,Arial,sans-serif;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid #e8eaed;padding-bottom:12px;">
+              <div>
+                <h2 style="font-size:17px;font-weight:600;color:#202124;font-family:'Google Sans',Roboto,Arial,sans-serif;">Executive Briefing Document</h2>
+                <p style="font-size:11px;color:#5f6368;margin-top:2px;">Project: ${proj.name} • ${selQuotes.length} verbatim quotes</p>
+              </div>
+              <button id="copyDocBtn" onclick="copyFormattedBriefingDoc()" 
+                      style="padding:6px 14px;background:#1a73e8;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Google Sans',Roboto,Arial,sans-serif;">
+                Copy Briefing Doc
+              </button>
+            </div>
+        `;
+
+        selQuotes.forEach((q, idx) => {
+          const cleanCat = cleanCategoryName(q.category);
+          const srcUrl = q.sourceUrl;
+          const isFav = !!q.refQuoteObj.isFavorite;
+          html += `
+            <div style="border-left:3px solid ${isFav ? '#f4b400' : '#1a73e8'};background:${isFav ? '#fffef7' : '#f8f9fa'};padding:12px 16px;margin-bottom:14px;border-radius:0 4px 4px 0;font-family:'Google Sans',Roboto,Arial,sans-serif;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-size:11px;font-weight:700;color:#1557b0;">${idx + 1}. ${cleanCat} [${q.roleTag}]</div>
+                <button onclick="toggleFavoriteQuote(state.currentFilteredQuotes[${idx}].refQuoteObj, event)" 
+                        style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;" 
+                        title="${isFav ? 'Remove from Favorites' : 'Add to Favorites'}">
+                  ${isFav ? '⭐' : '☆'}
+                </button>
+              </div>
+              <div style="font-size:13px;line-height:1.55;color:#202124;font-style:italic;">“${q.quote}”</div>
+              <div style="font-size:11px;color:#3c4043;margin-top:6px;font-weight:500;">
+                — <strong>${q.speaker}</strong> (${q.org})
+              </div>
+              <div style="font-size:11px;color:#5f6368;margin-top:3px;">
+                <strong>Takeaway:</strong> ${q.takeaway}
+                ${srcUrl ? ` &bull; <a href="${sanitizeUrl(srcUrl)}" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">🔗 Source Doc</a>` : ''}
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+        area.innerHTML = html;
+      } else {
+        const discoveredThemes = autoDiscoverContentThemes(selQuotes);
+        let chatHtml = "";
+
+        discoveredThemes.forEach((th, idx) => {
+          chatHtml += `<div style="margin-bottom:14px;">`;
+          chatHtml += `<div style="font-weight:700;font-size:13px;color:#1557b0;margin-bottom:4px;">${idx + 1}. ${th.title}</div>`;
+          chatHtml += `<ul style="padding-left:18px;margin:0;font-size:12px;line-height:1.6;color:#202124;">`;
+          th.quotes.slice(0, 3).forEach(sq => {
+            chatHtml += `<li style="margin-bottom:4px;"><strong>${sq.takeaway}</strong> (“${sq.quote.slice(0, 95)}…” — <em>${sq.speaker} [${sq.roleTag}]</em>)</li>`;
+          });
+          chatHtml += `</ul></div>`;
+        });
+
+        area.innerHTML = `
+          <div class="chat-post-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #e8eaed;padding-bottom:10px;">
+              <div>
+                <span style="font-size:14px;font-weight:600;color:#202124;">Team Update Summary</span>
+                <span style="font-size:11px;color:#1557b0;margin-left:8px;font-weight:500;">${discoveredThemes.length} Thematic Pillars</span>
+              </div>
+              <button id="copyTeamUpdateBtn" onclick="copyFormattedTeamUpdate()" style="padding:6px 14px;background:#1a73e8;color:white;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">Copy Summary</button>
+            </div>
+            <div style="font-size:12px;line-height:1.6;color:#202124;" id="chatPostContainer">${chatHtml}</div>
+          </div>
+        `;
+      }
+    }
+
+    async function copySingleCardHtml(index, btnEl) {
+      const q = state.currentFilteredQuotes ? state.currentFilteredQuotes[index] : null;
+      if (!q) return;
+      const cleanCat = cleanCategoryName(q.category);
+      
+      let html = `
+        <div style="background:#f8fbff;border:1px solid #d2e3fc;border-top:4px solid #1a73e8;border-radius:6px;padding:14px 18px;font-family:'Google Sans',Roboto,Arial,sans-serif;margin-bottom:12px;">
+          <div style="font-size:9pt;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">${cleanCat} &bull; ${q.roleTag}</div>
+          <div style="font-size:12pt;line-height:1.5;color:#202124;font-style:italic;margin-bottom:8px;">“${q.quote}”</div>
+          <div style="font-size:10pt;color:#3c4043;font-weight:700;margin-top:4px;">— ${q.speaker}</div>
+          <div style="font-size:9pt;color:#5f6368;">${q.org}</div>
+          <div style="font-size:9pt;color:#5f6368;margin-top:4px;"><strong>Takeaway:</strong> ${q.takeaway}${q.sourceUrl ? ` &bull; <a href="${q.sourceUrl}" style="color:#1a73e8;">Source Doc</a>` : ''}</div>
+        </div>
+      `;
+      let plain = `“${q.quote}”\n— ${q.speaker} (${q.org})\nTakeaway: ${q.takeaway}`;
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([plain], { type: 'text/plain' })
+          })
+        ]);
+        if (btnEl) {
+          btnEl.textContent = "Copied Card!";
+          setTimeout(() => btnEl.textContent = "Copy Card", 2500);
+        }
+      } catch (err) {
+        await navigator.clipboard.writeText(plain);
+        if (btnEl) {
+          btnEl.textContent = "Copied!";
+          setTimeout(() => btnEl.textContent = "Copy Card", 2500);
+        }
+      }
+    }
+
+    async function copyAllCardsForSlides() {
+      if (!state.currentFilteredQuotes || state.currentFilteredQuotes.length === 0) return;
+      let html = `<div style="font-family:'Google Sans',Roboto,Arial,sans-serif;">`;
+      let plain = ``;
+
+      state.currentFilteredQuotes.forEach((q, idx) => {
+        const cleanCat = cleanCategoryName(q.category);
+        html += `
+          <div style="background:#f8fbff;border:1px solid #d2e3fc;border-top:4px solid #1a73e8;border-radius:6px;padding:14px 18px;margin-bottom:14px;">
+            <div style="font-size:9pt;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#1a73e8;margin-bottom:6px;">${cleanCat} &bull; ${q.roleTag}</div>
+            <div style="font-size:12pt;line-height:1.5;color:#202124;font-style:italic;margin-bottom:8px;">“${q.quote}”</div>
+            <div style="font-size:10pt;color:#3c4043;font-weight:700;">— ${q.speaker}</div>
+            <div style="font-size:9pt;color:#5f6368;">${q.org}</div>
+            <div style="font-size:9pt;color:#5f6368;margin-top:4px;"><strong>Takeaway:</strong> ${q.takeaway}${q.sourceUrl ? ` &bull; <a href="${q.sourceUrl}">Source Doc</a>` : ''}</div>
+          </div>
+        `;
+        plain += `${idx + 1}. “${q.quote}” — ${q.speaker} (${q.org})\nTakeaway: ${q.takeaway}\n\n`;
+      });
+      html += `</div>`;
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([plain], { type: 'text/plain' })
+          })
+        ]);
+        const btn = document.getElementById("copyAllCardsBtn");
+        if (btn) {
+          btn.textContent = "Copied All Cards for Slides!";
+          setTimeout(() => btn.textContent = "Copy All Cards for Google Slides / Docs", 2500);
+        }
+      } catch (err) {
+        await navigator.clipboard.writeText(plain);
+      }
+    }
+
+    async function copyFormattedBriefingDoc() {
+      const proj = getProj();
+      let rawQuotes = [];
+      proj.transcripts.filter(t => t.checked).forEach(t => {
+        if (state.roleFilter !== "all" && t.role !== state.roleFilter) return;
+        t.quotes.forEach(q => {
+          const cleanCat = cleanCategoryName(q.category);
+          if (state.themeFilter !== "all" && cleanCat !== state.themeFilter) return;
+          rawQuotes.push({ 
+            ...q, 
+            speaker: t.participant, 
+            org: t.organization, 
+            roleTag: t.role,
+            sourceFile: q.source_file || t.title,
+            sourceUrl: q.source_url || t.sourceUrl || ""
+          });
+        });
+      });
+      const selQuotes = rawQuotes;
+
+      let html = `<div style="background-color:#ffffff;font-family:'Google Sans',Roboto,Arial,sans-serif;color:#202124;padding:10px;">`;
+      html += `<h2 style="color:#1a73e8;font-family:'Google Sans',sans-serif;font-size:18pt;margin-bottom:4pt;">EXECUTIVE BRIEFING DOCUMENT &mdash; VERBATIM QUOTE INDEX</h2>`;
+      html += `<p style="color:#5f6368;font-family:'Google Sans',sans-serif;font-size:11pt;margin-bottom:16pt;"><strong>Project:</strong> ${proj.name} &bull; ${selQuotes.length} verbatim quotes</p>`;
+      let plainText = `EXECUTIVE BRIEFING DOCUMENT — VERBATIM QUOTE INDEX\nProject: ${proj.name} (${selQuotes.length} quotes)\n\n`;
+
+      selQuotes.forEach((q, idx) => {
+        const cleanCat = cleanCategoryName(q.category);
+        html += `<h3 style="color:#1557b0;font-family:'Google Sans',sans-serif;font-size:12pt;font-weight:700;margin-top:14pt;margin-bottom:4pt;">${idx + 1}. ${cleanCat} [${q.roleTag}]</h3>`;
+        html += `<div style="background-color:#f8f9fa;border-left:4px solid #1a73e8;padding:12pt 16pt;margin-bottom:14pt;border-radius:0 4pt 4pt 0;">`;
+        html += `<p style="margin:0 0 6pt 0;color:#202124;font-family:'Google Sans',sans-serif;font-size:12pt;line-height:1.55;font-style:italic;">“${q.quote}”</p>`;
+        html += `<p style="margin:4pt 0 0 0;color:#3c4043;font-family:'Google Sans',sans-serif;font-size:11pt;font-weight:700;">— ${q.speaker} (${q.org})</p>`;
+        html += `<p style="margin:3pt 0 0 0;color:#5f6368;font-family:'Google Sans',sans-serif;font-size:10.5pt;"><strong>Takeaway:</strong> ${q.takeaway}`;
+        if (q.sourceUrl) {
+          html += ` &bull; <a href="${q.sourceUrl}" style="color:#1a73e8;text-decoration:underline;">🔗 Source Document</a>`;
+        }
+        html += `</p></div>`;
+
+        plainText += `${idx + 1}. ${cleanCat} [${q.roleTag}]\n`;
+        plainText += `“${q.quote}”\n`;
+        plainText += `— ${q.speaker} (${q.org})\n`;
+        plainText += `Takeaway: ${q.takeaway}\n\n`;
+      });
+      html += `</div>`;
+
+      try {
+        const blobHtml = new Blob([html], { type: 'text/html' });
+        const blobText = new Blob([plainText], { type: 'text/plain' });
+        const item = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText });
+        await navigator.clipboard.write([item]);
+        const btn = document.getElementById("copyDocBtn");
+        if (btn) {
+          btn.textContent = "Copied Formatted Prose!";
+          setTimeout(() => btn.textContent = "Copy Briefing Doc", 2500);
+        }
+      } catch (err) {
+        await navigator.clipboard.writeText(plainText);
+        const btn = document.getElementById("copyDocBtn");
+        if (btn) {
+          btn.textContent = "Copied Briefing Doc!";
+          setTimeout(() => btn.textContent = "Copy Briefing Doc", 2500);
+        }
+      }
+    }
+
+    async function copyFormattedTeamUpdate() {
+      const proj = getProj();
+      let rawQuotes = [];
+      proj.transcripts.filter(t => t.checked).forEach(t => {
+        if (state.roleFilter !== "all" && t.role !== state.roleFilter) return;
+        t.quotes.forEach(q => {
+          const cleanCat = cleanCategoryName(q.category);
+          if (state.themeFilter !== "all" && cleanCat !== state.themeFilter) return;
+          rawQuotes.push({ ...q, speaker: t.participant, org: t.organization, roleTag: t.role });
+        });
+      });
+      const selQuotes = rawQuotes;
+      const discoveredThemes = autoDiscoverContentThemes(selQuotes);
+
+      let html = `<div style="font-family:'Google Sans',Roboto,Arial,sans-serif;color:#202124;">`;
+      html += `<h2 style="color:#1a73e8;font-family:'Google Sans',sans-serif;font-size:18pt;margin-bottom:4pt;">QUALITATIVE SYNTHESIS & TEAM UPDATE</h2>`;
+      html += `<p style="color:#5f6368;font-family:'Google Sans',sans-serif;font-size:11pt;margin-bottom:16pt;"><strong>Project:</strong> ${proj.name} &bull; ${discoveredThemes.length} Thematic Pillars</p>`;
+      let plainText = `QUALITATIVE SYNTHESIS & TEAM UPDATE\nProject: ${proj.name}\n\n`;
+
+      discoveredThemes.forEach((th, idx) => {
+        html += `<h3 style="color:#1557b0;font-family:'Google Sans',sans-serif;font-size:13pt;font-weight:700;margin-top:12pt;margin-bottom:6pt;">${idx + 1}. ${th.title}</h3>`;
+        html += `<ul style="font-family:'Google Sans',sans-serif;font-size:11pt;line-height:1.6;color:#202124;padding-left:20pt;margin:0 0 12pt 0;">`;
+        plainText += `${idx + 1}. ${th.title}\n`;
+        th.quotes.slice(0, 3).forEach(sq => {
+          html += `<li style="margin-bottom:6pt;"><strong>${sq.takeaway}</strong> (“${sq.quote}” &mdash; <em>${sq.speaker} [${sq.roleTag}]</em>)</li>`;
+          plainText += `• ${sq.takeaway} ("${sq.quote}" — ${sq.speaker} [${sq.roleTag}])\n`;
+        });
+        html += `</ul>`;
+        plainText += `\n`;
+      });
+      html += `</div>`;
+
+      try {
+        const blobHtml = new Blob([html], { type: 'text/html' });
+        const blobText = new Blob([plainText], { type: 'text/plain' });
+        const item = new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText });
+        await navigator.clipboard.write([item]);
+        const btn = document.getElementById("copyTeamUpdateBtn");
+        if (btn) {
+          btn.textContent = "Copied Formatted Prose!";
+          setTimeout(() => btn.textContent = "Copy Summary", 2500);
+        }
+      } catch (err) {
+        await navigator.clipboard.writeText(plainText);
+        const btn = document.getElementById("copyTeamUpdateBtn");
+        if (btn) {
+          btn.textContent = "Copied Summary!";
+          setTimeout(() => btn.textContent = "Copy Summary", 2500);
+        }
+      }
+    }
+
+    function toggleSelectAll(checked) {
+      const proj = getProj();
+      proj.transcripts.forEach(t => t.checked = checked);
+      save(); render();
+    }
+    function switchOutputTab(tab, el) {
+      state.activeOutputTab = tab;
+      document.querySelectorAll('.output-tab').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderOutput();
+    }
+    function promptNewProject() {
+      const name = prompt("Enter new project title:");
+      if (!name) return;
+      const p = { id: "p_" + Date.now(), name: name, transcripts: [] };
+      state.projects.push(p);
+      state.activeProjectId = p.id;
+      save(); render();
+    }
+    function promptRenameProject(pid) {
+      const p = state.projects.find(x => x.id === pid);
+      if (!p) return;
+      const newName = prompt(`Enter new name for research folder:`, p.name);
+      if (newName !== null && newName.trim() !== "") {
+        p.name = newName.trim();
+        showNotificationToast(`✏️ Renamed research folder to "${p.name}"!`);
+      }
+    }
+
+    function openUploadModal() {
+      const u = document.getElementById("modalUrlInput");
+      const t = document.getElementById("modalTitleInput");
+      if (u) u.value = "";
+      if (t) t.value = "";
+      document.getElementById("uploadModal").classList.add("open");
+    }
+    function closeUploadModal() { document.getElementById("uploadModal").classList.remove("open"); }
+
+    let currentSharingProjectId = null;
+
+    function openShareModalFor(pid) {
+      currentSharingProjectId = pid || state.activeProjectId;
+      const p = state.projects.find(x => x.id === currentSharingProjectId) || getProj();
+      if (!p) return;
+
+      const subtext = document.getElementById("shareModalSubtext");
+      if (subtext) subtext.textContent = `Sharing "${p.name}" (${p.transcripts.length} research documents/transcripts)`;
+
+      const shareInput = document.getElementById("shareUrlInput");
+      if (shareInput) {
+        try {
+          const payload = btoa(encodeURIComponent(JSON.stringify(p)));
+          shareInput.value = `${window.location.origin}${window.location.pathname}?share=${payload}`;
+        } catch(e) {
+          shareInput.value = window.location.href;
+        }
+      }
+
+      document.getElementById("shareModal").classList.add("open");
+    }
+
+    function openShareModal() {
+      openShareModalFor(state.activeProjectId);
+    }
+
+    function closeShareModal() {
+      document.getElementById("shareModal").classList.remove("open");
+    }
+
+    async function copyShareUrlToClipboard() {
+      const input = document.getElementById("shareUrlInput");
+      if (!input || !input.value) return;
+      try {
+        await navigator.clipboard.writeText(input.value);
+        const btn = document.getElementById("copyShareUrlBtn");
+        if (btn) {
+          btn.textContent = "Copied!";
+          setTimeout(() => btn.textContent = "Copy Link", 2000);
+        }
+        showNotificationToast("🔗 Sharable project link copied to clipboard!");
+      } catch(err) {
+        input.select();
+        document.execCommand("copy");
+        showNotificationToast("🔗 Sharable link copied!");
+      }
+    }
+
+    function exportCurrentProjectJson() {
+      const pid = currentSharingProjectId || state.activeProjectId;
+      const p = state.projects.find(x => x.id === pid) || getProj();
+      if (!p) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(p, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `${p.name.replace(/\s+/g, '_')}_Research_Folder.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showNotificationToast(`💾 Downloaded "${p.name}" project export!`);
+    }
+
+    function handleImportProjectJson(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported && imported.name && Array.isArray(imported.transcripts)) {
+            imported.id = "p_imp_" + Date.now();
+            state.projects.unshift(imported);
+            state.activeProjectId = imported.id;
+            save();
+            render();
+            closeShareModal();
+            showNotificationToast(`📥 Successfully imported teammate's folder "${imported.name}"!`);
+          } else {
+            alert("Invalid research folder file format.");
+          }
+        } catch (err) {
+          alert("Error parsing project file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function checkUrlSharePayload() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const shareData = params.get("share");
+        if (shareData) {
+          const jsonStr = decodeURIComponent(atob(shareData));
+          const sharedProj = JSON.parse(jsonStr);
+          if (sharedProj && sharedProj.name && Array.isArray(sharedProj.transcripts)) {
+            sharedProj.id = "p_shared_" + Date.now();
+            if (!sharedProj.name.includes("(Shared)")) {
+              sharedProj.name = sharedProj.name + " (Shared)";
+            }
+            state.projects.unshift(sharedProj);
+            state.activeProjectId = sharedProj.id;
+            save();
+            showNotificationToast(`📥 Imported shared folder "${sharedProj.name}"!`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to auto-import share URL payload", e);
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
