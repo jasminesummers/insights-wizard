@@ -1,0 +1,27 @@
+# Python virtual environment and cache files
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Local secrets & API tokens
+token.json
+client_secret.json
+credentials.json
+
+# Local databases
+quotes_db.json
+database.json
+
+# Logs
+*.log
+.system_generated/
+.gemini/
+build-testlogs/
+blaze-bin/
+blaze-genfiles/
+blaze-out/
+blaze-testlogs/
+g3-tmp/
+*~
+.#*
