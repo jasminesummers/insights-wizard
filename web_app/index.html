@@ -1198,6 +1198,8 @@
       const newName = prompt(`Enter new name for research folder:`, p.name);
       if (newName !== null && newName.trim() !== "") {
         p.name = newName.trim();
+        save();
+        render();
         showNotificationToast(`✏️ Renamed research folder to "${p.name}"!`);
       }
     }
