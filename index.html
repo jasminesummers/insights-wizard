@@ -154,8 +154,8 @@
     <div style="display:flex;align-items:center;gap:12px;">
       <span id="userBadge" style="font-size:11.5px;font-weight:600;color:var(--g-gray-800);background:var(--g-gray-100);padding:4px 10px;border-radius:12px;display:none;align-items:center;gap:4px;">👤 Guest</span>
       <button id="signOutBtn" onclick="handleLogout()" style="font-size:11px;color:var(--g-gray-600);background:none;border:1px solid var(--g-gray-300);padding:4px 8px;border-radius:4px;cursor:pointer;display:none;">Sign Out</button>
-      <button onclick="resetToSeedData()" style="font-size:11px;color:#d93025;background:none;border:1px solid #fad2cf;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;">
-        Reset Clean Seed Data
+      <button onclick="resetToSeedData()" style="font-size:11px;color:#d93025;background:none;border:1px solid #fad2cf;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;" title="Reset application data to sample workspace">
+        Reset
       </button>
     </div>
   </header>
@@ -165,7 +165,6 @@
       <div class="sidebar-section-title">Research Folders</div>
       <ul class="project-list" id="projectList"></ul>
       <button class="btn-create-project" onclick="promptNewProject()">New Project Folder</button>
-      <button class="btn-create-project" onclick="openShareModal()" style="margin-top:4px;border-color:var(--g-blue-100);color:var(--g-blue-700);background:var(--g-blue-50);">🔗 Share Folder</button>
     </aside>
 
     <section class="transcripts-panel">
@@ -433,7 +432,15 @@
     function toggleFavoriteQuote(refObj, e) {
       if (e) e.stopPropagation();
       if (refObj) {
-        refObj.isFavorite = !refObj.isFavorite;
+        const tab = state.activeOutputTab || 'slides';
+        if (tab === 'slides') {
+          refObj.favSlides = !refObj.favSlides;
+        } else if (tab === 'doc') {
+          refObj.favDoc = !refObj.favDoc;
+        } else if (tab === 'chat') {
+          refObj.favChat = !refObj.favChat;
+        }
+        refObj.isFavorite = !!(refObj.favSlides || refObj.favDoc || refObj.favChat);
         save();
         render();
       }
@@ -540,12 +547,66 @@
       );
     }
 
+    function extractTranscriptDate(rawText, filename) {
+      const cleanFilename = filename ? filename.toLowerCase() : "";
+      
+      // Try matching: 29Jul26 or 29-Jul-26 or 2026-07-29
+      const fnDateMatch = cleanFilename.match(/(\d{1,2})[-_]?([a-z]{3})[-_]?(\d{2,4})/);
+      if (fnDateMatch) {
+        const day = fnDateMatch[1];
+        const monthStr = fnDateMatch[2];
+        let year = fnDateMatch[3];
+        if (year.length === 2) year = "20" + year;
+        const months = {
+          jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+          jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+        };
+        const month = months[monthStr];
+        if (month) {
+          return `${year}-${month}-${day.padStart(2, '0')}`;
+        }
+      }
+
+      const fnIsoMatch = cleanFilename.match(/(\d{4})[-_](\d{2})[-_](\d{2})/);
+      if (fnIsoMatch) {
+        return `${fnIsoMatch[1]}-${fnIsoMatch[2]}-${fnIsoMatch[3]}`;
+      }
+
+      const textLower = rawText.toLowerCase();
+      const textDateMatch = textLower.match(/date\s*:\s*([^\n\r]+)/i);
+      if (textDateMatch) {
+        const dateStr = textDateMatch[1].trim();
+        const parsed = Date.parse(dateStr);
+        if (!isNaN(parsed)) {
+          return new Date(parsed).toISOString().split("T")[0];
+        }
+      }
+
+      const wordDateMatch = textLower.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})[,\s]+(\d{4})/i);
+      if (wordDateMatch) {
+        const monthStr = wordDateMatch[1].slice(0, 3).toLowerCase();
+        const day = wordDateMatch[2].padStart(2, '0');
+        const year = wordDateMatch[3];
+        const months = {
+          jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+          jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+        };
+        const month = months[monthStr];
+        if (month) {
+          return `${year}-${month}-${day}`;
+        }
+      }
+
+      return new Date().toISOString().split("T")[0];
+    }
+
     function parseOneBoxText(rawText, filename) {
       const textLower = rawText.toLowerCase();
       let participant = filename ? filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ") : "";
       let org = "External Partner";
       let role = "GLG Expert";
       let title = filename ? filename.replace(/\.[^/.]+$/, "") : "Interview Notes";
+      const date = extractTranscriptDate(rawText, filename);
 
       if (textLower.includes("michael hardy")) {
         participant = "Michael Hardy";
@@ -594,50 +655,39 @@
         }
       });
 
-      const interviewerKeywords = ["interviewer", "rebecca", "chiu", "google", "jasminesummers"];
       const uniqueSpeakers = Array.from(new Set(speakerBlocks.map(b => b.speaker)));
-      
+      const speakerCharCounts = {};
+      speakerBlocks.forEach(b => {
+        speakerCharCounts[b.speaker] = (speakerCharCounts[b.speaker] || 0) + b.text.length;
+      });
+
       let expertSpeakerName = "";
-      for (const speaker of uniqueSpeakers) {
-        const lowerSp = speaker.toLowerCase();
-        if (lowerSp.includes("dinesh") || lowerSp.includes("kumar") || lowerSp.includes("hardy") || lowerSp.includes("michael") || lowerSp.includes("expert")) {
-          expertSpeakerName = speaker;
-          break;
+      let maxCharCount = 0;
+      for (const sp in speakerCharCounts) {
+        if (sp.toLowerCase().includes("interviewer") || sp.toLowerCase() === "q" || sp.toLowerCase() === "host") {
+          continue;
         }
-      }
-      
-      if (!expertSpeakerName && uniqueSpeakers.length >= 2) {
-        const nonInterviewer = uniqueSpeakers.find(sp => {
-          const lowerSp = sp.toLowerCase();
-          return !interviewerKeywords.some(kw => lowerSp.includes(kw));
-        });
-        if (nonInterviewer) {
-          expertSpeakerName = nonInterviewer;
+        if (speakerCharCounts[sp] > maxCharCount) {
+          maxCharCount = speakerCharCounts[sp];
+          expertSpeakerName = sp;
         }
       }
 
-      if (!expertSpeakerName) {
-        const speakerLengths = {};
-        speakerBlocks.forEach(b => {
-          if (!interviewerKeywords.some(kw => b.speaker.toLowerCase().includes(kw))) {
-            speakerLengths[b.speaker] = (speakerLengths[b.speaker] || 0) + b.text.length;
-          }
-        });
-        let maxLen = 0;
-        for (const sp in speakerLengths) {
-          if (speakerLengths[sp] > maxLen) {
-            maxLen = speakerLengths[sp];
-            expertSpeakerName = sp;
-          }
-        }
+      if (!expertSpeakerName && uniqueSpeakers.length > 0) {
+        expertSpeakerName = uniqueSpeakers[0];
       }
 
       if (expertSpeakerName && expertSpeakerName !== "Expert" && expertSpeakerName !== "Speaker") {
         participant = expertSpeakerName;
         if (participant.toLowerCase().includes("dinesh")) {
           org = "Former Procurement Lead, Meta & AWS";
+          role = "GLG Expert";
         } else if (participant.toLowerCase().includes("hardy")) {
           org = "VP, Alliances & OEM — Quantum Corporation";
+          role = "GLG Expert";
+        } else if (textLower.includes("google employee") || textLower.includes("google teammate") || textLower.includes("@google.com")) {
+          role = "Google Employee";
+          org = "Internal Google";
         }
       }
 
@@ -660,8 +710,7 @@
 
       const expertBlocks = speakerBlocks.filter(b => {
         const lowerSp = b.speaker.toLowerCase();
-        if (interviewerKeywords.some(kw => lowerSp.includes(kw))) return false;
-        return !expertSpeakerName || lowerSp === expertSpeakerName.toLowerCase() || lowerSp === "expert";
+        return lowerSp === expertSpeakerName.toLowerCase();
       });
 
       const chunks = [];
@@ -693,6 +742,9 @@
         quotes.push({
           category: assignedCat,
           quote: chunkText,
+          favSlides: false,
+          favDoc: false,
+          favChat: false,
           takeaway: chunkText.length > 80 ? chunkText.slice(0, 77) + "..." : chunkText
         });
       });
@@ -701,11 +753,14 @@
         quotes.push({
           category: "Performance & Buying Criteria",
           quote: `Sourced research from ${participant}`,
+          favSlides: false,
+          favDoc: false,
+          favChat: false,
           takeaway: `Verbatim document notes from ${participant}`
         });
       }
 
-      return { participant, org, role, title, quotes };
+      return { participant, org, role, title, date, quotes };
     }
 
     function showNotificationToast(msg) {
@@ -966,7 +1021,9 @@
       proj.transcripts.forEach(t => {
         t.quotes.forEach(q => {
           totalQuotesCount++;
-          if (q.isFavorite) totalFavCount++;
+          const tab = state.activeOutputTab || 'slides';
+          const isFav = tab === 'slides' ? q.favSlides : (tab === 'doc' ? q.favDoc : q.favChat);
+          if (isFav) totalFavCount++;
         });
       });
 
@@ -1028,12 +1085,12 @@
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:10px;color:#5f6368;border-top:1px solid #f1f3f4;padding-top:4px;">
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;">
-              ${t.sourceUrl ? `<a href="${sanitizeUrl(t.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Click to open Google Drive doc:\n${t.sourceUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Drive Source (${t.quotes.length} q)</a>` : `<span style="color:var(--g-gray-600);">📄 ${t.title} (${t.quotes.length} q)</span>`}
-              <button onclick="event.stopPropagation();promptEditSourceUrl('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-blue-600);margin-left:2px;" title="Edit Drive URL">(Edit URL)</button>
+              ${t.sourceUrl ? `<a href="${sanitizeUrl(t.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Click to open document source:\n${t.sourceUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Source (${t.quotes.length} q)</a>` : `<span style="color:var(--g-gray-600);">📄 ${t.title} (${t.quotes.length} q)</span>`}
+              <button onclick="event.stopPropagation();promptEditSourceUrl('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-blue-600);margin-left:2px;" title="Edit Source URL">(Edit URL)</button>
             </span>
             <span class="role-badge" style="margin-top:0;">
               ${t.role}
-              <button onclick="event.stopPropagation();promptSelfCategorize('${t.id}')">(Edit Role)</button>
+              <button onclick="event.stopPropagation();promptSelfCategorize('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--g-blue-600);margin-left:2px;" title="Edit Role">(Edit Role)</button>
             </span>
           </div>
         `;
@@ -1100,7 +1157,12 @@
         t.quotes.forEach(q => {
           const cleanCat = cleanCategoryName(q.category);
           if (state.themeFilter !== "all" && cleanCat !== state.themeFilter) return;
-          if (state.favoritesOnly && !q.isFavorite) return;
+          
+          if (state.favoritesOnly) {
+            const isFav = state.activeOutputTab === 'slides' ? q.favSlides : (state.activeOutputTab === 'doc' ? q.favDoc : q.favChat);
+            if (!isFav) return;
+          }
+          
           rawQuotes.push({ 
             ...q, 
             refQuoteObj: q,
@@ -1126,7 +1188,7 @@
         const cleanCat = cleanCategoryName(q.category);
         const srcLabel = q.sourceFile || q.speaker;
         const srcUrl = q.sourceUrl;
-        const isFav = !!q.refQuoteObj.isFavorite;
+        const isFav = !!(state.activeOutputTab === 'slides' ? q.refQuoteObj.favSlides : (state.activeOutputTab === 'doc' ? q.refQuoteObj.favDoc : q.refQuoteObj.favChat));
         return `
           <div class="slide-punch-card" style="${isFav ? 'border-top-color:#f4b400;background:#fffdf5;' : ''}">
             <div>
@@ -1144,7 +1206,7 @@
               <div style="font-size:10px;color:#5f6368;">
                 <strong>${q.speaker}</strong><br/>${q.org}
                 <div style="margin-top:3px;font-size:10px;">
-                  ${srcUrl ? `<a href="${sanitizeUrl(srcUrl)}" target="_blank" rel="noopener" title="Hover / Click to open Google Drive doc:\n${srcUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Drive Source</a>` : `<span title="Source transcript: ${srcLabel}" style="color:var(--g-gray-600);">📄 ${srcLabel}</span>`}
+                  ${srcUrl ? `<a href="${sanitizeUrl(srcUrl)}" target="_blank" rel="noopener" title="Hover / Click to open document source:\n${srcUrl}" style="color:var(--g-blue-600);text-decoration:underline;font-weight:600;">🔗 Source</a>` : `<span title="Source transcript: ${srcLabel}" style="color:var(--g-gray-600);">📄 ${srcLabel}</span>`}
                 </div>
               </div>
               <button class="btn-copy-card" onclick="copySingleCardHtml(${qIdx}, this)" style="font-family:'Google Sans',sans-serif;">Copy Card</button>
@@ -1216,7 +1278,7 @@
         selQuotes.forEach((q, idx) => {
           const cleanCat = cleanCategoryName(q.category);
           const srcUrl = q.sourceUrl;
-          const isFav = !!q.refQuoteObj.isFavorite;
+          const isFav = !!(state.activeOutputTab === 'slides' ? q.refQuoteObj.favSlides : (state.activeOutputTab === 'doc' ? q.refQuoteObj.favDoc : q.refQuoteObj.favChat));
           html += `
             <div style="border-left:3px solid ${isFav ? '#f4b400' : '#1a73e8'};background:${isFav ? '#fffef7' : '#f8f9fa'};padding:12px 16px;margin-bottom:14px;border-radius:0 4px 4px 0;font-family:'Google Sans',Roboto,Arial,sans-serif;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
