@@ -1,0 +1,14 @@
+{
+  "presentation_id": "1vv-PqZtuvxPAGcJothd_o-T4g4xOZ4SEFK-8lYEbNhw",
+  "placeholders": {
+    "{{PROJECT_NAME}}": "Automated Status Report",
+    "{{LAST_UPDATED}}": "2026-07-26 02:00 UTC",
+    "{{STATUS_SUMMARY}}": "All systems operating normally. Automatic trigger fired successfully.",
+    "{{METRIC_KEY_PERFORMANCE}}": "99.8%",
+    "{{METRIC_TOTAL_TASKS}}": "1,420"
+  },
+  "slide_notes": {
+    "enabled": false,
+    "note_text": "Auto-updated by Python Slides Generator."
+  }
+}
