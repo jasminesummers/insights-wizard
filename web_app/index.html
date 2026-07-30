@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0">
   <!-- Client-side Document Parsers -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <title>Insights Wizard — Qualitative Synthesis & Quote Hub</title>
   <style>
     :root {
@@ -720,7 +720,7 @@
           const arrayBuffer = e.target.result;
           try {
             if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/3.11.174/pdf.worker.min.js';
+              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let extractedText = "";
