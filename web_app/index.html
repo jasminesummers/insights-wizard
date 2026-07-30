@@ -143,14 +143,18 @@
 </head>
 <body>
 
-  <header>
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;">
     <div class="brand">
       <div class="brand-mark">IW</div>
       <div class="brand-title">Insights Wizard</div>
     </div>
-    <button onclick="resetToSeedData()" style="font-size:11px;color:#d93025;background:none;border:1px solid #fad2cf;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;">
-      Reset Clean Seed Data
-    </button>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="userBadge" style="font-size:11.5px;font-weight:600;color:var(--g-gray-800);background:var(--g-gray-100);padding:4px 10px;border-radius:12px;display:none;align-items:center;gap:4px;">👤 Guest</span>
+      <button id="signOutBtn" onclick="handleLogout()" style="font-size:11px;color:var(--g-gray-600);background:none;border:1px solid var(--g-gray-300);padding:4px 8px;border-radius:4px;cursor:pointer;display:none;">Sign Out</button>
+      <button onclick="resetToSeedData()" style="font-size:11px;color:#d93025;background:none;border:1px solid #fad2cf;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:600;">
+        Reset Clean Seed Data
+      </button>
+    </div>
   </header>
 
   <div class="app-shell">
@@ -265,9 +269,41 @@
         <div style="font-size:10px;color:var(--g-gray-600);margin-top:6px;">When teammates open this link, the research folder and quotes will automatically import into their workspace.</div>
       </div>
 
+      <!-- Collaborators Section -->
+      <div style="margin-top:14px;border-top:1px solid var(--g-gray-200);padding-top:12px;">
+        <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:6px;">Collaborators (Teammate Profiles)</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input type="email" id="shareCollaboratorInput" placeholder="teammate@google.com" 
+                 onkeydown="if(event.key==='Enter') addCollaboratorToProject()"
+                 style="flex:1;padding:6px 10px;border:1px solid var(--g-gray-300);border-radius:4px;font-size:11px;" />
+          <button onclick="addCollaboratorToProject()" 
+                  style="padding:6px 12px;background:var(--g-blue-50);color:var(--g-blue-700);border:1px solid var(--g-blue-100);border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">
+            Add User
+          </button>
+        </div>
+        <div id="collaboratorListContainer" style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto;padding:2px 0;"></div>
+      </div>
+
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
         <button onclick="closeShareModal()" style="padding:6px 14px;border:1px solid var(--g-gray-300);background:white;border-radius:4px;font-size:12px;cursor:pointer;">Done</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="loginModal" style="display:none;align-items:center;justify-content:center;">
+    <div class="modal-card" style="max-width:380px;text-align:center;padding:32px;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+      <div style="width:44px;height:44px;border-radius:8px;background-color:var(--g-blue-600);display:flex;align-items:center;justify-content:center;color:white;font-weight:750;font-size:22px;margin:0 auto 14px auto;">IW</div>
+      <div style="font-weight:600;font-size:20px;color:var(--g-gray-900);margin-bottom:6px;">Insights Wizard</div>
+      <div style="font-size:12px;color:var(--g-gray-600);margin-bottom:22px;">Enter your email to access your research folders.</div>
+      
+      <input type="email" id="loginEmailInput" placeholder="name@google.com" 
+             onkeydown="if(event.key==='Enter') handleLoginSubmit()"
+             style="width:100%;padding:10px 12px;border:1px solid var(--g-gray-300);border-radius:6px;font-size:13px;margin-bottom:16px;text-align:center;background:white;outline:none;" />
+      
+      <button onclick="handleLoginSubmit()" 
+              style="width:100%;padding:10.5px;background:var(--g-blue-600);color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;">
+        Continue
+      </button>
     </div>
   </div>
 
@@ -276,40 +312,84 @@
       {
         id: "p_default",
         name: "Title",
+        owner: "",
+        collaborators: [],
         transcripts: []
       }
     ];
 
     let state = {
-      projects: SEED_PROJECTS,
-      activeProjectId: "p_default",
+      projects: [],
+      activeProjectId: null,
       roleFilter: "all",
       themeFilter: "all",
       favoritesOnly: false,
       groupBy: "none",
-      activeOutputTab: "slides"
+      activeOutputTab: "slides",
+      currentUserEmail: ""
     };
 
     function init() {
-      const saved = localStorage.getItem("g_wizard_v10");
-      if (saved) {
-        try {
-          state.projects = JSON.parse(saved);
-        } catch(e) {
-          state.projects = SEED_PROJECTS;
+      const savedEmail = localStorage.getItem("g_wizard_v10_email");
+      if (savedEmail) {
+        state.currentUserEmail = savedEmail.toLowerCase().trim();
+        
+        // Hide login modal, show user controls
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("userBadge").style.display = "inline-flex";
+        document.getElementById("signOutBtn").style.display = "inline-block";
+        document.getElementById("userBadge").textContent = `👤 ${state.currentUserEmail}`;
+        
+        // Load projects specific to this user
+        const savedProjects = localStorage.getItem("g_wizard_v10_projects_" + state.currentUserEmail);
+        if (savedProjects) {
+          try {
+            state.projects = JSON.parse(savedProjects);
+          } catch(e) {
+            state.projects = [];
+          }
+        } else {
+          // Clone SEED_PROJECTS
+          const initial = JSON.parse(JSON.stringify(SEED_PROJECTS));
+          initial.forEach(p => p.owner = state.currentUserEmail);
+          state.projects = initial;
         }
+        
+        const savedActiveId = localStorage.getItem("g_wizard_v10_active_id_" + state.currentUserEmail);
+        state.activeProjectId = savedActiveId || (state.projects[0] ? state.projects[0].id : null);
+        
+        checkUrlSharePayload();
       } else {
-        state.projects = SEED_PROJECTS;
+        // Show login modal, hide user controls
+        document.getElementById("loginModal").style.display = "flex";
+        document.getElementById("userBadge").style.display = "none";
+        document.getElementById("signOutBtn").style.display = "none";
       }
-      if (!state.projects || state.projects.length === 0) {
-        state.projects = SEED_PROJECTS;
-      }
-      if (!state.activeProjectId || !state.projects.find(p => p.id === state.activeProjectId)) {
-        state.activeProjectId = state.projects[0].id;
-      }
-      checkUrlSharePayload();
       save();
       render();
+    }
+
+    function handleLoginSubmit() {
+      const emailInput = document.getElementById("loginEmailInput");
+      const email = emailInput ? emailInput.value.trim() : "";
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+      state.currentUserEmail = email.toLowerCase().trim();
+      localStorage.setItem("g_wizard_v10_email", state.currentUserEmail);
+      
+      init();
+    }
+
+    function handleLogout() {
+      localStorage.removeItem("g_wizard_v10_email");
+      state.currentUserEmail = "";
+      state.projects = [];
+      state.activeProjectId = null;
+      
+      document.getElementById("loginEmailInput").value = "";
+      init();
     }
 
     function removeAllTranscripts() {
@@ -328,7 +408,9 @@
 
     function resetToSeedData() {
       if (confirm("Reset all research folders to clean default seed data?")) {
-        state.projects = SEED_PROJECTS;
+        const initial = JSON.parse(JSON.stringify(SEED_PROJECTS));
+        initial.forEach(p => p.owner = state.currentUserEmail || "");
+        state.projects = initial;
         state.roleFilter = "all";
         state.themeFilter = "all";
         state.favoritesOnly = false;
@@ -367,8 +449,16 @@
       }
     }
 
-    function save() { localStorage.setItem("g_wizard_v10", JSON.stringify(state.projects)); }
-    function getProj() { return state.projects.find(p => p.id === state.activeProjectId) || state.projects[0]; }
+    function save() {
+      if (state.currentUserEmail) {
+        localStorage.setItem("g_wizard_v10_projects_" + state.currentUserEmail, JSON.stringify(state.projects));
+        localStorage.setItem("g_wizard_v10_active_id_" + state.currentUserEmail, state.activeProjectId || "");
+      }
+    }
+
+    function getProj() {
+      return state.projects.find(p => p.id === state.activeProjectId) || state.projects[0] || null;
+    }
 
     function getUniqueRolesInActiveProject() {
       const proj = getProj();
@@ -631,7 +721,17 @@
     function render() {
       const pList = document.getElementById("projectList");
       pList.innerHTML = "";
-      state.projects.forEach(p => {
+      
+      const visibleProjects = state.projects.filter(p => {
+        return !p.owner || p.owner === state.currentUserEmail || (p.collaborators && p.collaborators.includes(state.currentUserEmail));
+      });
+
+      if (visibleProjects.length > 0 && !visibleProjects.find(p => p.id === state.activeProjectId)) {
+        state.activeProjectId = visibleProjects[0].id;
+        save();
+      }
+
+      visibleProjects.forEach(p => {
         const li = document.createElement("li");
         li.className = `project-item ${p.id === state.activeProjectId ? 'active' : ''}`;
         li.onclick = () => { state.activeProjectId = p.id; state.roleFilter = "all"; save(); render(); };
@@ -1187,7 +1287,13 @@
     function promptNewProject() {
       const name = prompt("Enter new project title:");
       if (!name) return;
-      const p = { id: "p_" + Date.now(), name: name, transcripts: [] };
+      const p = { 
+        id: "p_" + Date.now(), 
+        name: name, 
+        owner: state.currentUserEmail || "",
+        collaborators: [],
+        transcripts: [] 
+      };
       state.projects.push(p);
       state.activeProjectId = p.id;
       save(); render();
@@ -1234,6 +1340,7 @@
       }
 
       document.getElementById("shareModal").classList.add("open");
+      renderCollaborators();
     }
 
     function openShareModal() {
@@ -1262,6 +1369,87 @@
       }
     }
 
+    function renderCollaborators() {
+      const pid = currentSharingProjectId || state.activeProjectId;
+      const p = state.projects.find(x => x.id === pid);
+      const container = document.getElementById("collaboratorListContainer");
+      if (!container || !p) return;
+      container.innerHTML = "";
+      
+      const ownerBadge = document.createElement("span");
+      ownerBadge.style.cssText = "font-size:10px;padding:3px 8px;border-radius:12px;background:#e8f0fe;color:#1557b0;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-bottom:2px;";
+      ownerBadge.innerHTML = `👑 ${p.owner || 'Unknown'}`;
+      container.appendChild(ownerBadge);
+
+      if (Array.isArray(p.collaborators)) {
+        p.collaborators.forEach(email => {
+          const badge = document.createElement("span");
+          badge.style.cssText = "font-size:10px;padding:3px 8px;border-radius:12px;background:#f1f3f4;color:#3c4043;font-weight:500;display:inline-flex;align-items:center;gap:4px;margin-bottom:2px;";
+          badge.innerHTML = `
+            <span>${email}</span>
+            <button onclick="removeCollaboratorFromProject('${email}')" 
+                    style="border:none;background:none;color:#d93025;cursor:pointer;font-size:11.5px;font-weight:bold;margin-left:4px;padding:0 2px;">
+              ×
+            </button>
+          `;
+          container.appendChild(badge);
+        });
+      }
+    }
+
+    function addCollaboratorToProject() {
+      const input = document.getElementById("shareCollaboratorInput");
+      const email = input ? input.value.trim().toLowerCase() : "";
+      if (!email || !email.includes("@")) {
+        alert("Please enter a valid teammate email address.");
+        return;
+      }
+      
+      const pid = currentSharingProjectId || state.activeProjectId;
+      const p = state.projects.find(x => x.id === pid);
+      if (p) {
+        if (!p.collaborators) p.collaborators = [];
+        if (email === p.owner) {
+          alert("This user is already the owner of the folder.");
+          return;
+        }
+        if (p.collaborators.includes(email)) {
+          alert("This user is already a collaborator.");
+          return;
+        }
+        p.collaborators.push(email);
+        input.value = "";
+        save();
+        renderCollaborators();
+        
+        // Regenerate the share URL
+        const shareInput = document.getElementById("shareUrlInput");
+        if (shareInput) {
+          const payload = btoa(encodeURIComponent(JSON.stringify(p)));
+          shareInput.value = `${window.location.origin}${window.location.pathname}?share=${payload}`;
+        }
+        showNotificationToast(`👥 Added collaborator "${email}"!`);
+      }
+    }
+
+    function removeCollaboratorFromProject(email) {
+      const pid = currentSharingProjectId || state.activeProjectId;
+      const p = state.projects.find(x => x.id === pid);
+      if (p && p.collaborators) {
+        p.collaborators = p.collaborators.filter(x => x !== email);
+        save();
+        renderCollaborators();
+
+        // Regenerate the share URL
+        const shareInput = document.getElementById("shareUrlInput");
+        if (shareInput) {
+          const payload = btoa(encodeURIComponent(JSON.stringify(p)));
+          shareInput.value = `${window.location.origin}${window.location.pathname}?share=${payload}`;
+        }
+        showNotificationToast(`👥 Removed collaborator "${email}"!`);
+      }
+    }
+
     function exportCurrentProjectJson() {
       const pid = currentSharingProjectId || state.activeProjectId;
       const p = state.projects.find(x => x.id === pid) || getProj();
@@ -1285,6 +1473,7 @@
           const imported = JSON.parse(e.target.result);
           if (imported && imported.name && Array.isArray(imported.transcripts)) {
             imported.id = "p_imp_" + Date.now();
+            if (!imported.owner) imported.owner = state.currentUserEmail;
             state.projects.unshift(imported);
             state.activeProjectId = imported.id;
             save();
@@ -1309,14 +1498,24 @@
           const jsonStr = decodeURIComponent(atob(shareData));
           const sharedProj = JSON.parse(jsonStr);
           if (sharedProj && sharedProj.name && Array.isArray(sharedProj.transcripts)) {
-            sharedProj.id = "p_shared_" + Date.now();
-            if (!sharedProj.name.includes("(Shared)")) {
-              sharedProj.name = sharedProj.name + " (Shared)";
+            const existing = state.projects.find(p => p.name === sharedProj.name || p.id === sharedProj.id);
+            if (existing) {
+              existing.transcripts = sharedProj.transcripts;
+              existing.owner = sharedProj.owner;
+              existing.collaborators = sharedProj.collaborators || [];
+              state.activeProjectId = existing.id;
+              showNotificationToast(`📥 Updated shared folder "${existing.name}"!`);
+            } else {
+              sharedProj.id = "p_shared_" + Date.now();
+              if (!sharedProj.collaborators) sharedProj.collaborators = [];
+              if (state.currentUserEmail && sharedProj.owner !== state.currentUserEmail && !sharedProj.collaborators.includes(state.currentUserEmail)) {
+                sharedProj.collaborators.push(state.currentUserEmail);
+              }
+              state.projects.unshift(sharedProj);
+              state.activeProjectId = sharedProj.id;
+              showNotificationToast(`📥 Imported shared folder "${sharedProj.name}"!`);
             }
-            state.projects.unshift(sharedProj);
-            state.activeProjectId = sharedProj.id;
             save();
-            showNotificationToast(`📥 Imported shared folder "${sharedProj.name}"!`);
             window.history.replaceState({}, document.title, window.location.pathname);
           }
         }
