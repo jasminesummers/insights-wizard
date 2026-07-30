@@ -522,6 +522,24 @@
       renderOutput();
     }
 
+    function isMetadataOrDisclaimer(text) {
+      const lower = text.toLowerCase();
+      return (
+        lower.includes("trademark of") ||
+        lower.includes("gerson lehrman") ||
+        lower.includes("glg and the glg logo") ||
+        lower.includes("not for distribution") ||
+        lower.includes("downloaded by") ||
+        lower.includes("@google.com") ||
+        lower.includes("page ") ||
+        lower.includes("copyright ©") ||
+        lower.trim() === "transcript" ||
+        lower.trim().startsWith("transcript ....") ||
+        lower.trim().startsWith("q&a ....") ||
+        lower.length < 15
+      );
+    }
+
     function parseOneBoxText(rawText, filename) {
       const textLower = rawText.toLowerCase();
       let participant = filename ? filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ") : "";
@@ -541,39 +559,89 @@
         participant = "Holomem";
         org = "Holomem Technology Inc.";
         role = "Competitor";
-      } else if (textLower.includes("rebecca chiu")) {
-        participant = "Rebecca Chiu";
-        org = "Google X Archival Pod";
-        role = "Google Employee";
-      } else {
-        const nameMatch = rawText.match(/(?:Speaker|Participant|Name|Expert):\s*([^\n,]+)(?:,\s*([^\n]+))?/i) ||
-                          rawText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+)\s*[-—–]\s*([^\n]+)/);
-        if (nameMatch) {
-          participant = nameMatch[1].trim();
-          if (nameMatch[2]) org = nameMatch[2].trim();
-        }
-        if (!participant || participant === "Google Drive Document" || participant === "Uploaded Research Doc") {
-          participant = (filename && filename !== "Google Drive Document") ? filename : "Industry Expert";
+      }
+
+      const lines = rawText.split(/\n/);
+      let currentSpeaker = "";
+      const speakerBlocks = [];
+
+      const speakerRegex = /^([A-Z][A-Za-z\s]{1,30}|Interviewer|Expert|Participant|Speaker\s*\d+)\s*:\s*(.*)/;
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        if (isMetadataOrDisclaimer(trimmed)) {
+          return;
         }
 
-        if (textLower.includes("glg") || textLower.includes("gerson") || textLower.includes("lehrman")) {
-          role = "GLG Expert";
-        } else if (textLower.includes("holomem") || textLower.includes("folio") || textLower.includes("cerabyte")) {
-          role = "Competitor";
-        } else if (textLower.includes("google") || textLower.includes("deepmind")) {
-          role = "Google Employee";
-        } else if (textLower.includes("seagate") || textLower.includes("western") || textLower.includes("oem")) {
-          role = "OEM Leadership";
-        } else if (textLower.includes("meta") || textLower.includes("aws") || textLower.includes("consultant")) {
-          role = "Hyperscale Infra";
+        const match = trimmed.match(speakerRegex);
+        if (match) {
+          currentSpeaker = match[1].trim();
+          const speechContent = match[2].trim();
+          if (speechContent) {
+            speakerBlocks.push({ speaker: currentSpeaker, text: speechContent });
+          }
+        } else if (currentSpeaker) {
+          const lastBlock = speakerBlocks[speakerBlocks.length - 1];
+          if (lastBlock && lastBlock.speaker === currentSpeaker) {
+            lastBlock.text += "\n" + trimmed;
+          } else {
+            speakerBlocks.push({ speaker: currentSpeaker, text: trimmed });
+          }
+        } else {
+          speakerBlocks.push({ speaker: "Expert", text: trimmed });
+        }
+      });
+
+      const interviewerKeywords = ["interviewer", "rebecca", "chiu", "google", "jasminesummers"];
+      const uniqueSpeakers = Array.from(new Set(speakerBlocks.map(b => b.speaker)));
+      
+      let expertSpeakerName = "";
+      for (const speaker of uniqueSpeakers) {
+        const lowerSp = speaker.toLowerCase();
+        if (lowerSp.includes("dinesh") || lowerSp.includes("kumar") || lowerSp.includes("hardy") || lowerSp.includes("michael") || lowerSp.includes("expert")) {
+          expertSpeakerName = speaker;
+          break;
+        }
+      }
+      
+      if (!expertSpeakerName && uniqueSpeakers.length >= 2) {
+        const nonInterviewer = uniqueSpeakers.find(sp => {
+          const lowerSp = sp.toLowerCase();
+          return !interviewerKeywords.some(kw => lowerSp.includes(kw));
+        });
+        if (nonInterviewer) {
+          expertSpeakerName = nonInterviewer;
         }
       }
 
-      const chunks = rawText
-        .split(/\n\n+|\r\n\r\n+|\n[-•*]\s*|\n(?=\d+[\.\)])|(?<=[.?!])\s+(?=[A-Z0-9"“])|\n/)
-        .map(c => c.trim().replace(/^[•*\-\d\.\)\s]+/, '').replace(/^["'“]+|["'”]+$/g, '').trim())
-        .filter(c => c.length > 6 && !c.toLowerCase().startsWith("speaker:") && !c.toLowerCase().startsWith("role:"));
+      if (!expertSpeakerName) {
+        const speakerLengths = {};
+        speakerBlocks.forEach(b => {
+          if (!interviewerKeywords.some(kw => b.speaker.toLowerCase().includes(kw))) {
+            speakerLengths[b.speaker] = (speakerLengths[b.speaker] || 0) + b.text.length;
+          }
+        });
+        let maxLen = 0;
+        for (const sp in speakerLengths) {
+          if (speakerLengths[sp] > maxLen) {
+            maxLen = speakerLengths[sp];
+            expertSpeakerName = sp;
+          }
+        }
+      }
 
+      if (expertSpeakerName && expertSpeakerName !== "Expert" && expertSpeakerName !== "Speaker") {
+        participant = expertSpeakerName;
+        if (participant.toLowerCase().includes("dinesh")) {
+          org = "Former Procurement Lead, Meta & AWS";
+        } else if (participant.toLowerCase().includes("hardy")) {
+          org = "VP, Alliances & OEM — Quantum Corporation";
+        }
+      }
+
+      const quotes = [];
       const rules = [
         ["Capacity & Supply Pressures", ["shortage", "supply", "capacity", "cost", "price", "delay", "commit", "order", "flash", "lead time", "oem"]],
         ["Workloads & Data Tiering", ["tier", "cold", "hot", "warm", "archive", "rot", "delete", "retention", "footprint", "exabyte", "petabyte"]],
@@ -590,7 +658,23 @@
         "Adoption & Commercial Strategy"
       ];
 
-      const quotes = [];
+      const expertBlocks = speakerBlocks.filter(b => {
+        const lowerSp = b.speaker.toLowerCase();
+        if (interviewerKeywords.some(kw => lowerSp.includes(kw))) return false;
+        return !expertSpeakerName || lowerSp === expertSpeakerName.toLowerCase() || lowerSp === "expert";
+      });
+
+      const chunks = [];
+      expertBlocks.forEach(b => {
+        const sentences = b.text.split(/(?<=[.?!])\s+/);
+        sentences.forEach(s => {
+          const cleanS = s.trim().replace(/^["'“]+|["'”]+$/g, '').trim();
+          if (cleanS.length > 35 && !isMetadataOrDisclaimer(cleanS)) {
+            chunks.push(cleanS);
+          }
+        });
+      });
+
       chunks.forEach((chunkText, idx) => {
         const lower = chunkText.toLowerCase();
         let assignedCat = null;
@@ -616,7 +700,7 @@
       if (quotes.length === 0) {
         quotes.push({
           category: "Performance & Buying Criteria",
-          quote: rawText.trim() || `Sourced research from ${participant}`,
+          quote: `Sourced research from ${participant}`,
           takeaway: `Verbatim document notes from ${participant}`
         });
       }
