@@ -532,25 +532,26 @@
     function isMetadataOrDisclaimer(text) {
       const lower = text.toLowerCase();
       return (
-        lower.includes("trademark of") ||
-        lower.includes("gerson lehrman") ||
+        lower.includes("trademark of gerson lehrman group") ||
         lower.includes("glg and the glg logo") ||
-        lower.includes("not for distribution") ||
-        lower.includes("downloaded by") ||
-        lower.includes("@google.com") ||
-        lower.includes("page ") ||
-        lower.includes("copyright ©") ||
         lower.trim() === "transcript" ||
         lower.trim().startsWith("transcript ....") ||
         lower.trim().startsWith("q&a ....") ||
+        lower.trim().startsWith("page ") ||
         lower.length < 15
       );
+    }
+
+    function cleanSentenceText(text) {
+      let clean = text.replace(/[/]?\s*\d*\s*Downloaded by\s+\S+@\S+/gi, '');
+      clean = clean.replace(/Downloaded by\s+\S+@\S+/gi, '');
+      clean = clean.replace(/NOT FOR DISTRIBUTION OUTSIDE YOUR FIRM/gi, '');
+      return clean.trim();
     }
 
     function extractTranscriptDate(rawText, filename) {
       const cleanFilename = filename ? filename.toLowerCase() : "";
       
-      // Try matching: 29Jul26 or 29-Jul-26 or 2026-07-29
       const fnDateMatch = cleanFilename.match(/(\d{1,2})[-_]?([a-z]{3})[-_]?(\d{2,4})/);
       if (fnDateMatch) {
         const day = fnDateMatch[1];
@@ -558,7 +559,7 @@
         let year = fnDateMatch[3];
         if (year.length === 2) year = "20" + year;
         const months = {
-          jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+          jan: "01", feb: "02", mar: "03", api: "04", may: "05", jun: "06",
           jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
         };
         const month = months[monthStr];
@@ -626,7 +627,7 @@
       let currentSpeaker = "";
       const speakerBlocks = [];
 
-      const speakerRegex = /^([A-Z][A-Za-z\s]{1,30}|Interviewer|Expert|Participant|Speaker\s*\d+)\s*:\s*(.*)/;
+      const speakerRegex = /^([A-Z][A-Za-z\s()\-]{1,45}|Interviewer|Expert|Participant|Speaker\s*\d+)\s*:\s*(.*)/;
 
       lines.forEach(line => {
         const trimmed = line.trim();
@@ -717,13 +718,13 @@
       expertBlocks.forEach(b => {
         const sentences = b.text.split(/(?<=[.?!])\s+/);
         sentences.forEach(s => {
-          const cleanS = s.trim().replace(/^["'“]+|["'”]+$/g, '').trim();
-          if (cleanS.length > 35 && !isMetadataOrDisclaimer(cleanS)) {
-            chunks.push(cleanS);
+          const cleanS = cleanSentenceText(s);
+          const withoutQuotes = cleanS.replace(/^["'“]+|["'”]+$/g, '').trim();
+          if (withoutQuotes.length > 35 && !isMetadataOrDisclaimer(withoutQuotes)) {
+            chunks.push(withoutQuotes);
           }
         });
       });
-
       chunks.forEach((chunkText, idx) => {
         const lower = chunkText.toLowerCase();
         let assignedCat = null;
