@@ -6,6 +6,9 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <!-- Client-side Document Parsers -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/3.11.174/pdf.min.js"></script>
   <title>Insights Wizard — Qualitative Synthesis & Quote Hub</title>
   <style>
     :root {
@@ -214,20 +217,20 @@
   <div class="modal-overlay" id="uploadModal">
     <div class="modal-card" style="max-width:540px;">
       <div style="font-weight:600;font-size:16px;margin-bottom:4px;color:var(--g-gray-900);">📄 Upload Document</div>
-      <div style="font-size:11px;color:var(--g-gray-600);margin-bottom:14px;">Select a local transcript file (.txt, .md, .csv) to auto-extract quotes and attach an optional Google Drive source link.</div>
+      <div style="font-size:11px;color:var(--g-gray-600);margin-bottom:14px;">Select a local document file to auto-extract quotes and attach an optional Google Drive source link.</div>
 
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div>
-          <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:4px;">1. Select Transcript File</label>
+          <label style="font-size:11px;font-weight:700;color:var(--g-gray-800);display:block;margin-bottom:4px;">1. Select Document File</label>
           <div class="drop-zone" id="dropZone" 
                onclick="document.getElementById('fileInputModal').click();"
                ondragover="event.preventDefault();"
                ondrop="event.preventDefault();handleModalFileChosen(event.dataTransfer.files);"
                style="padding:22px 14px;border:2px dashed var(--g-blue-600);background:#f8fbff;border-radius:6px;text-align:center;cursor:pointer;">
             <div style="font-size:13px;font-weight:600;color:var(--g-blue-700);" id="dropZoneText">📁 Click to choose file or drag &amp; drop</div>
-            <div style="font-size:10px;color:var(--g-gray-600);margin-top:2px;">Supports plain text (.txt), Markdown (.md), and CSV (.csv)</div>
+            <div style="font-size:10px;color:var(--g-gray-600);margin-top:2px;">Supports PDF (.pdf), Word (.docx), Chrome HTML (.html, .htm) &amp; Text (.txt, .md, .csv)</div>
           </div>
-          <input type="file" id="fileInputModal" class="file-input-hidden" accept=".txt,.md,.csv,.json" onchange="handleModalFileChosen(this.files)" style="display:none;">
+          <input type="file" id="fileInputModal" class="file-input-hidden" accept=".txt,.md,.csv,.json,.pdf,.docx,.html,.htm" onchange="handleModalFileChosen(this.files)" style="display:none;">
         </div>
 
         <div>
@@ -634,11 +637,12 @@
       setTimeout(() => { toast.style.opacity = "0"; }, 3500);
     }
 
-    let pendingFileContent = "";
+    let pendingFileObject = null;
 
     function handleModalFileChosen(files) {
       if (!files || files.length === 0) return;
       const file = files[0];
+      pendingFileObject = file;
       
       const titleInput = document.getElementById("modalTitleInput");
       const cleanedName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
@@ -650,34 +654,131 @@
       if (dzText) {
         dzText.textContent = `📄 Selected: ${file.name}`;
       }
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        pendingFileContent = e.target.result || "";
-      };
-      reader.readAsText(file);
     }
 
-    function processUploadedDocument() {
+    function readTextFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result || "");
+        reader.onerror = (e) => reject(new Error("Failed to read text file."));
+        reader.readAsText(file);
+      });
+    }
+
+    function parseHtmlFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const htmlString = e.target.result || "";
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            if (doc.body) {
+              const scripts = doc.body.getElementsByTagName('script');
+              const styles = doc.body.getElementsByTagName('style');
+              for (let i = scripts.length - 1; i >= 0; i--) scripts[i].remove();
+              for (let i = styles.length - 1; i >= 0; i--) styles[i].remove();
+              resolve(doc.body.innerText || "");
+            } else {
+              resolve(htmlString);
+            }
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = (e) => reject(new Error("Failed to read HTML file."));
+        reader.readAsText(file);
+      });
+    }
+
+    function parseDocxFile(file) {
+      return new Promise((resolve, reject) => {
+        if (typeof mammoth === "undefined") {
+          reject(new Error("Word document parser library is still loading. Please wait a moment and try again."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const arrayBuffer = e.target.result;
+          mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+            .then((result) => resolve(result.value || ""))
+            .catch((err) => reject(new Error("Failed to parse Word document: " + err.message)));
+        };
+        reader.onerror = (e) => reject(new Error("Failed to read Word file."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function parsePdfFile(file) {
+      return new Promise((resolve, reject) => {
+        if (typeof pdfjsLib === "undefined") {
+          reject(new Error("PDF parser library is still loading. Please wait a moment and try again."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const arrayBuffer = e.target.result;
+          try {
+            if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdfjs-dist/3.11.174/pdf.worker.min.js';
+            }
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let extractedText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(" ");
+              extractedText += pageText + "\n\n";
+            }
+            resolve(extractedText);
+          } catch (err) {
+            reject(new Error("Failed to parse PDF: " + err.message));
+          }
+        };
+        reader.onerror = (e) => reject(new Error("Failed to read PDF file."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function processUploadedDocument() {
       const titleInput = document.getElementById("modalTitleInput");
       const urlInput = document.getElementById("modalUrlInput");
 
       const docTitle = titleInput ? titleInput.value.trim() : "";
       const rawUrl = urlInput ? urlInput.value.trim() : "";
 
-      if (!pendingFileContent && !docTitle) {
-        alert("Please select a transcript file to upload.");
+      if (!pendingFileObject) {
+        alert("Please select a document file to upload.");
         return;
       }
 
+      showNotificationToast("⏳ Parsing document and extracting quotes...");
+
       try {
+        let extractedText = "";
+        const file = pendingFileObject;
+        const extension = file.name.split('.').pop().toLowerCase();
+
+        if (extension === "docx") {
+          extractedText = await parseDocxFile(file);
+        } else if (extension === "pdf") {
+          extractedText = await parsePdfFile(file);
+        } else if (extension === "html" || extension === "htm") {
+          extractedText = await parseHtmlFile(file);
+        } else {
+          extractedText = await readTextFile(file);
+        }
+
+        if (!extractedText || extractedText.trim() === "") {
+          throw new Error("Could not extract any text from the document. The file might be empty or scanned.");
+        }
+
         const cleanUrl = rawUrl ? sanitizeUrl(rawUrl) : "";
-        const contentToParse = pendingFileContent || docTitle;
-        const extracted = parseOneBoxText(contentToParse, docTitle || "Uploaded Transcript");
+        const extracted = parseOneBoxText(extractedText, docTitle || file.name);
 
         let proj = getProj();
         if (!proj || !Array.isArray(proj.transcripts)) {
-          proj = { id: "p_" + Date.now(), name: "Title", transcripts: [] };
+          proj = { id: "p_" + Date.now(), name: "Title", owner: state.currentUserEmail || "", collaborators: [], transcripts: [] };
           state.projects = [proj];
           state.activeProjectId = proj.id;
         }
@@ -704,7 +805,7 @@
         closeUploadModal();
         render();
 
-        pendingFileContent = "";
+        pendingFileObject = null;
         if (titleInput) titleInput.value = "";
         if (urlInput) urlInput.value = "";
         const dzText = document.getElementById("dropZoneText");
@@ -714,7 +815,7 @@
 
       } catch (err) {
         console.error("Upload error:", err);
-        alert("Notice: " + err.message);
+        alert("Upload Error: " + err.message);
       }
     }
 
