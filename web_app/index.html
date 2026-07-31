@@ -867,7 +867,10 @@
             for (let i = 1; i <= pdf.numPages; i++) {
               const page = await pdf.getPage(i);
               const textContent = await page.getTextContent();
-              const pageText = textContent.items.map(item => item.str).join(" ");
+              let pageText = "";
+              textContent.items.forEach(item => {
+                pageText += item.str + (item.hasEOL ? "\n" : " ");
+              });
               extractedText += pageText + "\n\n";
             }
             resolve(extractedText);
@@ -916,6 +919,16 @@
         const cleanUrl = rawUrl ? sanitizeUrl(rawUrl) : "";
         const extracted = parseOneBoxText(extractedText, docTitle || file.name);
 
+        if (extracted.quotes.length === 0 || (extracted.quotes.length === 1 && extracted.quotes[0].quote.startsWith("Sourced research from"))) {
+          console.warn("No quotes extracted. Raw text length:", extractedText.length);
+          console.log("Raw text content:", extractedText);
+          const preview = extractedText.trim() ? extractedText.slice(0, 550) + "\n... (truncated)" : "[EMPTY TEXT]";
+          alert(`Warning: Insights Wizard could not extract any thematic quotes from this file.\n\nHere is a preview of the raw text extracted from the document:\n\n${preview}\n\nIf the text above is empty, garbled, or contains only metadata/disclaimers, the PDF may be scanned (image-only), or too heavily protected.`);
+          pendingFileObject = null;
+          closeUploadModal();
+          return;
+        }
+
         let proj = getProj();
         if (!proj || !Array.isArray(proj.transcripts)) {
           proj = { id: "p_" + Date.now(), name: "Title", owner: state.currentUserEmail || "", collaborators: [], transcripts: [] };
@@ -930,7 +943,7 @@
           role: extracted.role,
           title: docTitle || extracted.title,
           sourceUrl: cleanUrl,
-          date: new Date().toISOString().split("T")[0],
+          date: extracted.date || new Date().toISOString().split("T")[0],
           checked: true,
           quotes: extracted.quotes.map(q => ({ ...q, source_url: cleanUrl }))
         };
